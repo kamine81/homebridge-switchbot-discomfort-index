@@ -1,5 +1,10 @@
 # homebridge-switchbot-discomfort-index
 
+[![npm version](https://img.shields.io/npm/v/homebridge-switchbot-discomfort-index.svg)](https://www.npmjs.com/package/homebridge-switchbot-discomfort-index)
+[![npm downloads](https://img.shields.io/npm/dm/homebridge-switchbot-discomfort-index.svg)](https://www.npmjs.com/package/homebridge-switchbot-discomfort-index)
+[![CI](https://github.com/kamine81/homebridge-switchbot-discomfort-index/actions/workflows/ci.yml/badge.svg)](https://github.com/kamine81/homebridge-switchbot-discomfort-index/actions/workflows/ci.yml)
+[![License](https://img.shields.io/npm/l/homebridge-switchbot-discomfort-index.svg)](./LICENSE)
+
 A Homebridge plugin that fetches temperature and humidity from SwitchBot temperature/humidity devices via the SwitchBot OpenAPI v1.1, calculates the Discomfort Index (DI), and exposes it to HomeKit as a temperature sensor.
 
 ## Discomfort Index formula
