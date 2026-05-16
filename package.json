@@ -1,0 +1,56 @@
+{
+  "displayName": "Homebridge SwitchBot Discomfort Index",
+  "name": "homebridge-switchbot-discomfort-index",
+  "version": "0.1.0",
+  "description": "Homebridge plugin that calculates the Discomfort Index from SwitchBot temperature/humidity devices and exposes it to HomeKit.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kamine81/homebridge-switchbot-discomfort-index.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kamine81/homebridge-switchbot-discomfort-index/issues"
+  },
+  "homepage": "https://github.com/kamine81/homebridge-switchbot-discomfort-index#readme",
+  "main": "dist/index.js",
+  "engines": {
+    "node": "^20.19.0 || ^22.12.0 || ^24.0.0",
+    "homebridge": "^1.8.0 || ^2.0.0-beta.0"
+  },
+  "scripts": {
+    "build": "rimraf ./dist && tsc",
+    "watch": "npm run build && npm link && nodemon",
+    "lint": "eslint src",
+    "format": "prettier --check .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "switchbot",
+    "discomfort-index",
+    "temperature",
+    "humidity"
+  ],
+  "peerDependencies": {
+    "homebridge": "^1.8.0 || ^2.0.0-beta.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@homebridge/hap-nodejs": "^2.1.6",
+    "@types/node": "^25.6.2",
+    "@typescript-eslint/eslint-plugin": "^8.59.2",
+    "@typescript-eslint/parser": "^8.59.2",
+    "@vitest/coverage-v8": "^4.1.5",
+    "eslint": "^10.3.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.6.0",
+    "homebridge": "^2.0.2",
+    "nodemon": "^3.1.0",
+    "prettier": "^3.8.3",
+    "rimraf": "^6.1.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  }
+}

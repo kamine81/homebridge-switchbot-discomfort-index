@@ -1,0 +1,73 @@
+{
+  "pluginAlias": "SwitchBotDiscomfortIndex",
+  "pluginType": "platform",
+  "singular": false,
+  "headerDisplay": "Fetches temperature and humidity from SwitchBot devices via the OpenAPI v1.1, calculates the Discomfort Index, and exposes it to HomeKit. Get your token and secret from the SwitchBot app: Profile → Settings → tap App Version 10 times → Developer Options.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Platform Name",
+        "type": "string",
+        "required": true,
+        "default": "SwitchBot Discomfort Index"
+      },
+      "token": {
+        "title": "SwitchBot OpenAPI Token",
+        "type": "string",
+        "required": true
+      },
+      "secret": {
+        "title": "SwitchBot OpenAPI Secret",
+        "type": "string",
+        "required": true
+      },
+      "sensors": {
+        "title": "Sensors",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Display Name",
+              "type": "string",
+              "required": true,
+              "default": "Discomfort Index"
+            },
+            "deviceId": {
+              "title": "Device ID",
+              "type": "string",
+              "required": true,
+              "pattern": "^[A-Fa-f0-9]{12}$",
+              "description": "12-digit hex deviceId from GET /v1.1/devices"
+            },
+            "updateInterval": {
+              "title": "Update Interval (seconds)",
+              "type": "integer",
+              "default": 60,
+              "minimum": 30,
+              "maximum": 3600,
+              "description": "How often to poll the SwitchBot API (30–3600 seconds, default 60)"
+            }
+          }
+        }
+      }
+    }
+  },
+  "form": [
+    "name",
+    "token",
+    "secret",
+    {
+      "key": "sensors",
+      "items": [
+        "sensors[].name",
+        "sensors[].deviceId",
+        {
+          "key": "sensors[].updateInterval",
+          "type": "number"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+src/
+.claude/
+.gitignore
+.prettierrc.json
+tsconfig.json
+tsconfig.eslint.json
+eslint.config.mjs
+vitest.config.ts
+mise.toml
+renovate.json5
+nodemon.json
+CLAUDE.md
+.vscode/
+.github/
+*.tgz

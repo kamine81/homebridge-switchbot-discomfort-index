@@ -1,0 +1,83 @@
+name: Bug report
+description: Report a problem with the plugin
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug. Please fill in as much information as possible to help us reproduce it.
+        **Never include your token or secret.**
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: homebridge-version
+    attributes:
+      label: Homebridge version
+      placeholder: "e.g. 1.8.5 / 2.0.0-beta.0"
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: "e.g. 20.19.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: config.json (mask token/secret)
+      description: Replace your token and secret with `***` before pasting
+      render: json
+      placeholder: |
+        {
+          "platform": "SwitchBotDiscomfortIndex",
+          "token": "***",
+          "secret": "***",
+          "sensors": [...]
+        }
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (including Homebridge debug output)
+      description: Paste output from the Homebridge UI "Log" tab or from a `--debug` run
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
