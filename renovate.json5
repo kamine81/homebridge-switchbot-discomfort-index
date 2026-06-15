@@ -6,30 +6,55 @@
   "schedule": ["before 9am on monday"],
   "labels": ["dependencies"],
   "packageRules": [
-    // typescript-eslint は常にセットで更新
+    // Lint / format 関連をまとめて更新
     {
       "matchPackageNames": [
+        "eslint",
+        "@eslint/js",
         "@typescript-eslint/eslint-plugin",
         "@typescript-eslint/parser",
+        "eslint-config-prettier",
+        "globals",
+        "prettier",
       ],
-      "groupName": "typescript-eslint",
+      "groupName": "lint/format",
     },
-    // vitest 本体とカバレッジプラグインをまとめて更新
+    // テスト関連をまとめて更新
     {
       "matchPackageNames": [
         "vitest",
         "@vitest/coverage-v8",
       ],
-      "groupName": "vitest",
+      "groupName": "test",
     },
-    // ESLint 関連をまとめて更新
+    // TypeScript / 型定義をまとめて更新
     {
       "matchPackageNames": [
-        "eslint",
-        "eslint-config-prettier",
-        "@eslint/js",
+        "typescript",
+        "@types/node",
       ],
-      "groupName": "eslint",
+      "groupName": "typescript",
+    },
+    // Homebridge 関連をまとめて更新
+    {
+      "matchPackageNames": [
+        "homebridge",
+        "@homebridge/hap-nodejs",
+      ],
+      "groupName": "homebridge",
+    },
+    // ビルド補助ツールをまとめて更新
+    {
+      "matchPackageNames": [
+        "rimraf",
+        "nodemon",
+      ],
+      "groupName": "build-tools",
+    },
+    // GitHub Actions をまとめて更新
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
     },
   ],
 }
