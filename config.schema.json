@@ -48,6 +48,20 @@
               "minimum": 30,
               "maximum": 3600,
               "description": "How often to poll the SwitchBot API (30–3600 seconds, default 60)"
+            },
+            "enableScale": {
+              "title": "Enable scale conversion",
+              "type": "boolean",
+              "default": false,
+              "description": "Multiply the DI before exposing it to HomeKit so automation thresholds (which step in increments of 5) can target a finer DI granularity. When off, the raw DI is used."
+            },
+            "scale": {
+              "title": "Scale factor",
+              "type": "number",
+              "default": 2,
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Factor multiplied with the DI (e.g. 2 makes one HomeKit 5-step equal 2.5 DI). The Home app will display DI × scale."
             }
           }
         }
@@ -66,6 +80,14 @@
         {
           "key": "sensors[].updateInterval",
           "type": "number"
+        },
+        "sensors[].enableScale",
+        {
+          "key": "sensors[].scale",
+          "type": "number",
+          "condition": {
+            "functionBody": "return model.sensors && model.sensors[arrayIndices] && model.sensors[arrayIndices].enableScale === true;"
+          }
         }
       ]
     }

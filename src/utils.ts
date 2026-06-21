@@ -16,6 +16,8 @@ export interface SensorConfig {
   name: string;
   deviceId: string;
   updateInterval?: number;
+  enableScale?: boolean;
+  scale?: number;
 }
 
 export function isSensorConfig(v: unknown): v is SensorConfig {
@@ -24,7 +26,9 @@ export function isSensorConfig(v: unknown): v is SensorConfig {
   return (
     typeof obj.name === 'string' && obj.name.length > 0 &&
     typeof obj.deviceId === 'string' && obj.deviceId.length > 0 &&
-    (obj.updateInterval === undefined || typeof obj.updateInterval === 'number')
+    (obj.updateInterval === undefined || typeof obj.updateInterval === 'number') &&
+    (obj.enableScale === undefined || typeof obj.enableScale === 'boolean') &&
+    (obj.scale === undefined || typeof obj.scale === 'number')
   );
 }
 
@@ -53,6 +57,35 @@ export function resolveUpdateInterval(raw: unknown): { value: number; warning?: 
   if (clamped !== rounded) parts.push(`clamped to ${clamped === MIN_INTERVAL ? 'minimum' : 'maximum'} ${clamped}`);
 
   return { value: clamped, warning: `updateInterval ${parts.join(', ')}.` };
+}
+
+const MIN_SCALE = 1;
+const MAX_SCALE = 10;
+const DEFAULT_SCALE = 1;
+
+// Resolves the scale factor applied to the Discomfort Index before it is exposed to HomeKit.
+// Scaling lets HomeKit automation thresholds (which only step in increments of 5) target a finer
+// DI granularity (e.g. scale=2 makes one 5-step equal 2.5 DI). The scale may be fractional, so
+// unlike resolveUpdateInterval it is not rounded to an integer.
+export function resolveScale(raw: unknown): { value: number; warning?: string } {
+  if (raw === undefined) return { value: DEFAULT_SCALE };
+
+  if (!Number.isFinite(raw)) {
+    return {
+      value: DEFAULT_SCALE,
+      warning: `Invalid scale value (${String(raw)}). Using default of ${DEFAULT_SCALE}.`,
+    };
+  }
+
+  const num = raw as number;
+  const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, num));
+
+  if (num === clamped) return { value: clamped };
+
+  return {
+    value: clamped,
+    warning: `scale clamped to ${clamped === MIN_SCALE ? 'minimum' : 'maximum'} ${clamped} (was ${num}).`,
+  };
 }
 
 export function calculateDiscomfortIndex(temperature: number, humidity: number): number {

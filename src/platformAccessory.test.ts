@@ -173,6 +173,48 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
     handler.stop();
   });
 
+  it('exposes the DI multiplied by scale when enableScale is true', async () => {
+    vi.unstubAllGlobals();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 25, humidity: 60 } }),
+      }),
+    );
+
+    // 25°C / 60% → DI 72.82; scaled ×2 → 145.6 (rounded to 0.1)
+    const scaledSensor: SensorConfig = { name: 'Scaled', deviceId: 'AABBCCDDEEFF', enableScale: true, scale: 2 };
+    const { handler, getHandler } = buildAccessory(scaledSensor);
+
+    await handler.start();
+
+    expect(getHandler!() as number).toBeCloseTo(145.6, 1);
+
+    handler.stop();
+  });
+
+  it('exposes the raw DI when enableScale is false or omitted (backward compatible)', async () => {
+    vi.unstubAllGlobals();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 25, humidity: 60 } }),
+      }),
+    );
+
+    // scale is ignored because enableScale is not enabled
+    const sensor: SensorConfig = { name: 'Unscaled', deviceId: 'AABBCCDDEEFF', scale: 2 };
+    const { handler, getHandler } = buildAccessory(sensor);
+
+    await handler.start();
+
+    expect(getHandler!() as number).toBeCloseTo(72.8, 1);
+
+    handler.stop();
+  });
+
   it('logs a warn and starts with 60s default when updateInterval is NaN', async () => {
     vi.unstubAllGlobals();
     vi.stubGlobal(

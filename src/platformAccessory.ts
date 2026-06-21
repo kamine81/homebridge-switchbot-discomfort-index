@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import pkg from '../package.json';
 import { SWITCHBOT_API_BASE, SWITCHBOT_API_TIMEOUT_MS } from './settings';
 import { SwitchBotDiscomfortIndexPlatform } from './platform';
-import { buildSwitchBotAuthHeaders, calculateDiscomfortIndex, isSensorConfig, isValidDeviceId, resolveUpdateInterval, type SensorConfig } from './utils';
+import { buildSwitchBotAuthHeaders, calculateDiscomfortIndex, isSensorConfig, isValidDeviceId, resolveScale, resolveUpdateInterval, type SensorConfig } from './utils';
 
 export type { SensorConfig } from './utils';
 
@@ -21,6 +21,7 @@ interface SwitchBotStatusResponse {
 export class DiscomfortIndexAccessory {
   private service: Service;
   private readonly sensor: SensorConfig;
+  private readonly scale: number;
   private currentDI = 0;
   private ready = false;
   private timer?: NodeJS.Timeout;
@@ -41,6 +42,16 @@ export class DiscomfortIndexAccessory {
       throw new Error(`Invalid deviceId format: ${this.sensor.deviceId}`);
     }
 
+    // The DI is scaled before being exposed so that HomeKit automation thresholds (which step in
+    // increments of 5) can target a finer DI granularity. Scaling is opt-in; the default is 1.
+    const { value: scale, warning: scaleWarning } = this.sensor.enableScale
+      ? resolveScale(this.sensor.scale)
+      : { value: 1, warning: undefined };
+    if (scaleWarning) {
+      this.platform.log.warn(`[${this.sensor.name}] ${scaleWarning}`);
+    }
+    this.scale = scale;
+
     accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, 'SwitchBot')
       .setCharacteristic(this.platform.Characteristic.Model, pkg.displayName)
@@ -54,9 +65,10 @@ export class DiscomfortIndexAccessory {
 
     // The HomeKit CurrentTemperature standard range is -270–100 °C.
     // Discomfort Index (typically 50–90) fits within that, but props are set explicitly for clarity.
+    // maxValue tracks the scale factor so the scaled DI still fits (scale=1 keeps the original 150).
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .onGet(this.handleGet.bind(this))
-      .setProps({ minValue: -50, maxValue: 150, minStep: 0.1 });
+      .setProps({ minValue: -50, maxValue: 150 * this.scale, minStep: 0.1 });
 
     this.accessory.on('identify', () => {
       this.platform.log.info(`[${this.sensor.name}] identify`);
@@ -105,7 +117,7 @@ export class DiscomfortIndexAccessory {
       }
 
       const di = calculateDiscomfortIndex(t, h);
-      this.currentDI = Math.round(di * 10) / 10;
+      this.currentDI = Math.round(di * this.scale * 10) / 10;
       this.ready = true;
 
       this.service.updateCharacteristic(
@@ -114,7 +126,8 @@ export class DiscomfortIndexAccessory {
       );
 
       this.platform.log.debug(
-        `[${sensor.name}] T=${t}℃ H=${h}% → DI=${this.currentDI}`,
+        `[${sensor.name}] T=${t}℃ H=${h}% → DI=${Math.round(di * 10) / 10}`
+        + (this.scale !== 1 ? ` (×${this.scale} = ${this.currentDI})` : ''),
       );
     } catch (err) {
       if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {

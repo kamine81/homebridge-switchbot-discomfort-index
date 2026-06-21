@@ -66,7 +66,9 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
         {
           "name": "Living Room DI",
           "deviceId": "XXXXXXXXXXXX",
-          "updateInterval": 60
+          "updateInterval": 60,
+          "enableScale": true,
+          "scale": 2
         }
       ]
     }
@@ -82,6 +84,19 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
 | `sensors[].name` | Name shown in HomeKit |
 | `sensors[].deviceId` | 12-digit hex device ID |
 | `sensors[].updateInterval` | Polling interval in seconds (default 60, min 30, max 3600) |
+| `sensors[].enableScale` | Opt-in to scaling the DI before exposing it (default `false`) |
+| `sensors[].scale` | Factor multiplied with the DI when `enableScale` is `true` (default 2, min 1, max 10) |
+
+### Finer automation thresholds with `scale`
+
+HomeKit's Home app only lets you set temperature-sensor automation thresholds in **increments of 5**. Because the DI is exposed through `CurrentTemperature`, that means automations can only react in steps of 5 DI by default.
+
+Enabling `scale` multiplies the DI before it reaches HomeKit, so a 5-unit HomeKit step maps to a finer DI step:
+
+- `scale: 2` → one HomeKit 5-step ≈ **2.5 DI**
+- `scale: 5` → one HomeKit 5-step ≈ **1.0 DI**
+
+> **Note:** When scaling is enabled, the Home app displays **DI × scale** (e.g. DI 75 shows as 150 with `scale: 2`). This is expected — the number is intentionally inflated to gain finer trigger precision. Leave `enableScale` off (the default) to keep the raw DI value.
 
 ## Development & Contributing
 

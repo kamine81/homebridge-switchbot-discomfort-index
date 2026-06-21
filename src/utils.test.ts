@@ -7,6 +7,7 @@ import {
   isSensorConfig,
   isValidDeviceId,
   isValidToken,
+  resolveScale,
   resolveUpdateInterval,
 } from './utils';
 
@@ -100,6 +101,38 @@ describe('resolveUpdateInterval', () => {
   });
 });
 
+describe('resolveScale', () => {
+  it('returns default 1 with no warning when value is undefined (not configured)', () => {
+    expect(resolveScale(undefined)).toEqual({ value: 1 });
+  });
+
+  it('passes through valid values within range without warning', () => {
+    expect(resolveScale(1)).toEqual({ value: 1 });
+    expect(resolveScale(2)).toEqual({ value: 2 });
+    expect(resolveScale(2.5)).toEqual({ value: 2.5 });
+    expect(resolveScale(10)).toEqual({ value: 10 });
+  });
+
+  it('returns default 1 with a warning for non-finite values (NaN, Infinity, string, null)', () => {
+    expect(resolveScale(NaN)).toMatchObject({ value: 1, warning: expect.stringContaining('Invalid') });
+    expect(resolveScale(Infinity)).toMatchObject({ value: 1, warning: expect.any(String) });
+    expect(resolveScale('2')).toMatchObject({ value: 1, warning: expect.any(String) });
+    expect(resolveScale(null)).toMatchObject({ value: 1, warning: expect.any(String) });
+  });
+
+  it('clamps a value below 1 to 1 and includes a warning', () => {
+    const result = resolveScale(0.5);
+    expect(result.value).toBe(1);
+    expect(result.warning).toMatch(/minimum/);
+  });
+
+  it('clamps a value above 10 to 10 and includes a warning', () => {
+    const result = resolveScale(20);
+    expect(result.value).toBe(10);
+    expect(result.warning).toMatch(/maximum/);
+  });
+});
+
 describe('buildSwitchBotAuthHeaders', () => {
   it('produces a valid HMAC-SHA256/base64 signature per SwitchBot v1.1 spec', () => {
     const token = 'test-token';
@@ -147,6 +180,19 @@ describe('isSensorConfig', () => {
 
   it('returns false when updateInterval is a string', () => {
     expect(isSensorConfig({ name: 'Room', deviceId: 'AABBCCDDEEFF', updateInterval: '60' })).toBe(false);
+  });
+
+  it('returns true when enableScale and scale are valid', () => {
+    expect(isSensorConfig({ name: 'Room', deviceId: 'AABBCCDDEEFF', enableScale: true, scale: 2 })).toBe(true);
+    expect(isSensorConfig({ name: 'Room', deviceId: 'AABBCCDDEEFF', enableScale: false })).toBe(true);
+  });
+
+  it('returns false when scale is a string', () => {
+    expect(isSensorConfig({ name: 'Room', deviceId: 'AABBCCDDEEFF', scale: '2' })).toBe(false);
+  });
+
+  it('returns false when enableScale is a string', () => {
+    expect(isSensorConfig({ name: 'Room', deviceId: 'AABBCCDDEEFF', enableScale: 'true' })).toBe(false);
   });
 
   it('returns false for null', () => {
