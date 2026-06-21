@@ -80,6 +80,7 @@ The entry point follows the three-layer structure required by Homebridge's Dynam
 - TypeScript with `strict: true`. Do not relax types to work around errors.
 - Use `this.platform.log` (`info` / `warn` / `error` / `debug`) for logging. No `console.log`.
 - Log messages and code comments must be written in English.
+- GitHub issues and pull requests (titles and bodies) must be written in English.
 - Conventional Commits (`feat:` / `fix:` / `refactor:` / `test:` / `docs:` / `chore:` / `ci:`). PRs merge into main.
 
 ## Config files
