@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-23
+
+### Added
+
+- Opt-in scaled Discomfort Index accessory: when `enableScale` is set, an additional accessory exposes `(DI - offset) * scale`, enabling finer-grained HomeKit automation triggers. The device status is fetched once per interval and shared between the base and scaled accessories, so scaling adds no extra API calls (`scale`, `offset` config fields)
+
+### Fixed
+
+- Stale readings: once the last successful reading is older than `STALE_INTERVAL_FACTOR` update intervals (3 by default), the getters now throw `SERVICE_COMMUNICATION_FAILURE` so HomeKit stops acting on stale data; a fresh success clears the staleness (closes #8)
+- Exclude the `.serena/` tooling directory from the published npm package
+
+### Refactored
+
+- Hardened the scaled DI configuration types (closes #9)
+
 ## [0.1.0] - 2026-05-10
 
 ### Added
@@ -43,5 +58,6 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 - Documented policy: never log HMAC auth header values (`sign` / `Authorization`)
 
-[Unreleased]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/releases/tag/v0.1.0
