@@ -8,6 +8,11 @@ import { buildSwitchBotAuthHeaders, calculateDiscomfortIndex, isSensorConfig, is
 
 export type { SensorConfig } from './utils';
 
+// HomeKit's automation trigger UI for CurrentTemperature caps the threshold at 150, so the
+// exposed (scaled) value must stay within this range or it cannot be used as a trigger.
+const DI_MIN_VALUE = -50;
+const DI_MAX_VALUE = 150;
+
 interface SwitchBotStatusResponse {
   statusCode: number;
   message: string;
@@ -65,10 +70,11 @@ export class DiscomfortIndexAccessory {
 
     // The HomeKit CurrentTemperature standard range is -270–100 °C.
     // Discomfort Index (typically 50–90) fits within that, but props are set explicitly for clarity.
-    // maxValue tracks the scale factor so the scaled DI still fits (scale=1 keeps the original 150).
+    // maxValue stays at 150 because HomeKit's trigger UI caps thresholds there; the scaled value is
+    // clamped to this range in refresh() so it remains usable as an automation trigger.
     this.service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .onGet(this.handleGet.bind(this))
-      .setProps({ minValue: -50, maxValue: 150 * this.scale, minStep: 0.1 });
+      .setProps({ minValue: DI_MIN_VALUE, maxValue: DI_MAX_VALUE, minStep: 0.1 });
 
     this.accessory.on('identify', () => {
       this.platform.log.info(`[${this.sensor.name}] identify`);
@@ -117,7 +123,9 @@ export class DiscomfortIndexAccessory {
       }
 
       const di = calculateDiscomfortIndex(t, h);
-      this.currentDI = Math.round(di * this.scale * 10) / 10;
+      const scaled = Math.round(di * this.scale * 10) / 10;
+      // Clamp into HomeKit's allowed range so the value stays a valid automation trigger.
+      this.currentDI = Math.min(DI_MAX_VALUE, Math.max(DI_MIN_VALUE, scaled));
       this.ready = true;
 
       this.service.updateCharacteristic(

@@ -194,6 +194,27 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
     handler.stop();
   });
 
+  it('clamps the scaled value to HomeKit\'s 150 maximum', async () => {
+    vi.unstubAllGlobals();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 25, humidity: 60 } }),
+      }),
+    );
+
+    // 25°C / 60% → DI 72.82; ×10 = 728.2, which is clamped down to the 150 cap
+    const sensor: SensorConfig = { name: 'Clamped', deviceId: 'AABBCCDDEEFF', enableScale: true, scale: 10 };
+    const { handler, getHandler } = buildAccessory(sensor);
+
+    await handler.start();
+
+    expect(getHandler!() as number).toBe(150);
+
+    handler.stop();
+  });
+
   it('exposes the raw DI when enableScale is false or omitted (backward compatible)', async () => {
     vi.unstubAllGlobals();
     vi.stubGlobal(
