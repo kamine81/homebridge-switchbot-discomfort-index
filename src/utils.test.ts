@@ -172,6 +172,12 @@ describe('resolveOffset', () => {
 describe('scale/offset bounds stay in sync with config.schema.json', () => {
   const props = schema.schema.properties.sensors.items.properties;
 
+  it('declares scale/offset as numeric fields in the schema', () => {
+    // The resolvers coerce with Number.isFinite; a schema type change would silently break that contract.
+    expect(props.scale.type).toBe('number');
+    expect(props.offset.type).toBe('number');
+  });
+
   it('resolveScale matches the schema default/minimum/maximum', () => {
     const { default: def, minimum, maximum } = props.scale;
     expect(resolveScale(undefined).value).toBe(def);
