@@ -85,6 +85,11 @@ export class SwitchBotDiscomfortIndexPlatform implements DynamicPlatformPlugin {
         const scaledUuid = this.api.hap.uuid.generate(`${SCALED_UUID_PREFIX}${sensor.deviceId}`);
         validUuids.add(scaledUuid);
         scaledAccessory = this.resolveAccessory(scaledUuid, sensor.name + SCALED_NAME_SUFFIX, sensor);
+      } else if (sensor.scale !== undefined || sensor.offset !== undefined) {
+        // scale/offset only take effect on the scaled accessory; without enableScale they are ignored.
+        this.log.warn(
+          `[${sensor.name}] scale/offset are set but enableScale is not enabled; they will be ignored.`,
+        );
       }
 
       // One handler per device drives both accessories from a single API poll. It is keyed by the

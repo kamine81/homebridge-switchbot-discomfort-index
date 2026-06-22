@@ -232,11 +232,74 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
 
     // 40°C / 100% → DI ≈ 104; × 10 = 1040, which is clamped down to the 750 cap
     const sensor: SensorConfig = { name: 'Clamped', deviceId: 'AABBCCDDEEFF', scale: 10 };
-    const { handler, scaledGet } = buildAccessory(sensor, true);
+    const { handler, scaledGet, log } = buildAccessory(sensor, true);
 
     await handler.start();
 
     expect(scaledGet!() as number).toBe(750);
+    // The clamp is surfaced as a warning so a misconfiguration is not silently swallowed.
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('clamped to 750'));
+    // The debug line shows the pre-clamp value (1040), not the clamped 750, so the raw computation
+    // stays visible for diagnosis.
+    expect(log.debug).toHaveBeenCalledWith(expect.stringContaining('= 1040 → clamped 750'));
+
+    handler.stop();
+  });
+
+  it('warns once per clamping episode and re-arms after the value returns in range', async () => {
+    vi.unstubAllGlobals();
+    const clamped = {
+      ok: true,
+      json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 40, humidity: 100 } }),
+    };
+    const inRange = {
+      ok: true,
+      json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 22, humidity: 50 } }),
+    };
+    // start() → clamped, tick → still clamped, tick → in range, tick → clamped again.
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(clamped)
+      .mockResolvedValueOnce(clamped)
+      .mockResolvedValueOnce(inRange)
+      .mockResolvedValueOnce(clamped);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const sensor: SensorConfig = { name: 'Episode', deviceId: 'AABBCCDDEEFF', scale: 10 };
+    const { handler, log } = buildAccessory(sensor, true);
+
+    await handler.start();                       // 1st clamp → 1 warn
+    expect(log.warn).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);   // still clamped → suppressed
+    expect(log.warn).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);   // back in range → reset, no warn
+    expect(log.warn).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);   // clamped again → new episode → 2nd warn
+    expect(log.warn).toHaveBeenCalledTimes(2);
+
+    handler.stop();
+  });
+
+  it('clamps the scaled value to HomeKit\'s -50 minimum', async () => {
+    vi.unstubAllGlobals();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 20, humidity: 50 } }),
+      }),
+    );
+
+    // 20°C / 50% → DI ≈ 65.25; (65.25 - 150) × 1 ≈ -84.75, which is clamped up to the -50 floor
+    const sensor: SensorConfig = { name: 'Floored', deviceId: 'AABBCCDDEEFF', scale: 1, offset: 150 };
+    const { handler, scaledGet, log } = buildAccessory(sensor, true);
+
+    await handler.start();
+
+    expect(scaledGet!() as number).toBe(-50);
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('clamped to -50'));
 
     handler.stop();
   });
@@ -260,6 +323,16 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
     expect(getHandler!() as number).toBeCloseTo(72.8, 1);
 
     handler.stop();
+  });
+
+  it('forwards out-of-range scale/offset warnings to log.warn when building the scaled accessory', () => {
+    // Construction alone resolves scale/offset; no fetch/start needed to surface the warnings.
+    const sensor: SensorConfig = { name: 'Bad', deviceId: 'AABBCCDDEEFF', scale: 20, offset: 200 };
+    const { log } = buildAccessory(sensor, true);
+
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('maximum'));
+    // Both resolvers report independently (scale clamped to 10, offset clamped to 150).
+    expect(log.warn).toHaveBeenCalledTimes(2);
   });
 
   it('logs a warn and starts with 60s default when updateInterval is NaN', async () => {

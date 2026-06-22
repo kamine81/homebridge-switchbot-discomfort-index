@@ -11,6 +11,7 @@ import {
   resolveScale,
   resolveUpdateInterval,
 } from './utils';
+import schema from '../config.schema.json';
 
 describe('isValidDeviceId', () => {
   it('accepts a 12-digit hex deviceId', () => {
@@ -103,8 +104,8 @@ describe('resolveUpdateInterval', () => {
 });
 
 describe('resolveScale', () => {
-  it('returns default 1 with no warning when value is undefined (not configured)', () => {
-    expect(resolveScale(undefined)).toEqual({ value: 1 });
+  it('returns default 2 with no warning when value is undefined (not configured)', () => {
+    expect(resolveScale(undefined)).toEqual({ value: 2 });
   });
 
   it('passes through valid values within range without warning', () => {
@@ -114,11 +115,11 @@ describe('resolveScale', () => {
     expect(resolveScale(10)).toEqual({ value: 10 });
   });
 
-  it('returns default 1 with a warning for non-finite values (NaN, Infinity, string, null)', () => {
-    expect(resolveScale(NaN)).toMatchObject({ value: 1, warning: expect.stringContaining('Invalid') });
-    expect(resolveScale(Infinity)).toMatchObject({ value: 1, warning: expect.any(String) });
-    expect(resolveScale('2')).toMatchObject({ value: 1, warning: expect.any(String) });
-    expect(resolveScale(null)).toMatchObject({ value: 1, warning: expect.any(String) });
+  it('returns default 2 with a warning for non-finite values (NaN, Infinity, string, null)', () => {
+    expect(resolveScale(NaN)).toMatchObject({ value: 2, warning: expect.stringContaining('Invalid') });
+    expect(resolveScale(Infinity)).toMatchObject({ value: 2, warning: expect.any(String) });
+    expect(resolveScale('2')).toMatchObject({ value: 2, warning: expect.any(String) });
+    expect(resolveScale(null)).toMatchObject({ value: 2, warning: expect.any(String) });
   });
 
   it('clamps a value below 1 to 1 and includes a warning', () => {
@@ -163,6 +164,26 @@ describe('resolveOffset', () => {
     const result = resolveOffset(200);
     expect(result.value).toBe(150);
     expect(result.warning).toMatch(/maximum/);
+  });
+});
+
+// The numeric bounds live both in utils.ts (the runtime clamps) and config.schema.json (the
+// Homebridge UI form). These tests pin the resolver behaviour to the schema so the two cannot drift.
+describe('scale/offset bounds stay in sync with config.schema.json', () => {
+  const props = schema.schema.properties.sensors.items.properties;
+
+  it('resolveScale matches the schema default/minimum/maximum', () => {
+    const { default: def, minimum, maximum } = props.scale;
+    expect(resolveScale(undefined).value).toBe(def);
+    expect(resolveScale(minimum - 1).value).toBe(minimum);
+    expect(resolveScale(maximum + 1).value).toBe(maximum);
+  });
+
+  it('resolveOffset matches the schema default/minimum/maximum', () => {
+    const { default: def, minimum, maximum } = props.offset;
+    expect(resolveOffset(undefined).value).toBe(def);
+    expect(resolveOffset(minimum - 1).value).toBe(minimum);
+    expect(resolveOffset(maximum + 1).value).toBe(maximum);
   });
 });
 

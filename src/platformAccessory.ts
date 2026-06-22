@@ -8,8 +8,10 @@ import { buildSwitchBotAuthHeaders, calculateDiscomfortIndex, isSensorConfig, is
 
 export type { SensorConfig } from './utils';
 
-// HomeKit's automation trigger UI for CurrentTemperature allows thresholds up to 750, so the
-// exposed (scaled) value must stay within this range or it cannot be used as a trigger.
+// Empirically, the Home app's automation threshold picker for a temperature sensor (confirmed on
+// iOS 26.5) only accepts values up to 750; values beyond that cannot be selected as a trigger.
+// The exposed (scaled) value must stay within this range or it is useless as a trigger. This is not
+// part of any documented HAP spec, so revisit if Apple changes the picker behaviour.
 const DI_MIN_VALUE = -50;
 const DI_MAX_VALUE = 750;
 
@@ -40,6 +42,10 @@ export class DiscomfortIndexAccessory {
   private currentScaled = 0;   // (DI - offset) * scale exposed by the scaled accessory
   private ready = false;
   private timer?: NodeJS.Timeout;
+  // Track whether each value is currently being clamped, so the warning is logged once per clamping
+  // episode instead of every interval. Reset when the value falls back within range.
+  private baseClampWarned = false;
+  private scaledClampWarned = false;
 
   constructor(
     private readonly platform: SwitchBotDiscomfortIndexPlatform,
@@ -110,8 +116,10 @@ export class DiscomfortIndexAccessory {
 
     service.setCharacteristic(this.platform.Characteristic.Name, displayName);
 
-    // The HomeKit CurrentTemperature standard range is -270–100 °C. maxValue is widened to 750 because
-    // HomeKit's trigger UI allows thresholds up to there; values are clamped to this range in refresh().
+    // The HomeKit CurrentTemperature standard range is -270–100 °C. Both the base and scaled services
+    // share these props for simplicity; maxValue is widened to 750 for the scaled service's sake (see
+    // DI_MAX_VALUE above). The base raw DI never approaches the bounds, but its value is clamped in
+    // refresh() defensively all the same.
     service.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .onGet(onGet)
       .setProps({ minValue: DI_MIN_VALUE, maxValue: DI_MAX_VALUE, minStep: 0.1 });
@@ -157,6 +165,30 @@ export class DiscomfortIndexAccessory {
     }
   }
 
+  // Clamps a value to the HomeKit range and, if it actually clamped, logs a warning once per clamping
+  // episode (tracked by the caller's getWarned/setWarned). The flag resets when the value is back in
+  // range, so a new episode after recovery warns again. `hint` adds caller-specific guidance.
+  private clampWithWarning(
+    label: string,
+    raw: number,
+    getWarned: () => boolean,
+    setWarned: (v: boolean) => void,
+    hint = '',
+  ): number {
+    const clamped = clampToRange(raw);
+    if (clamped === raw) {
+      setWarned(false);
+      return clamped;
+    }
+    if (!getWarned()) {
+      this.platform.log.warn(
+        `[${label}] value ${raw} clamped to ${clamped} (allowed ${DI_MIN_VALUE}..${DI_MAX_VALUE})${hint}.`,
+      );
+      setWarned(true);
+    }
+    return clamped;
+  }
+
   private async refresh(): Promise<void> {
     const sensor = this.sensor;
     try {
@@ -174,26 +206,42 @@ export class DiscomfortIndexAccessory {
 
       const di = calculateDiscomfortIndex(t, h);
       const rawDI = Math.round(di * 10) / 10;
-      this.currentDI = clampToRange(rawDI);
+      // The raw DI normally stays well within range; clamp defensively but warn if it ever fires, as
+      // that signals an upstream problem (e.g. an absurd-but-finite reading) rather than mere scaling.
+      this.currentDI = this.clampWithWarning(sensor.name, rawDI, () => this.baseClampWarned, v => {
+        this.baseClampWarned = v;
+      });
       this.baseService.updateCharacteristic(
         this.platform.Characteristic.CurrentTemperature,
         this.currentDI,
       );
 
+      let scaledDebug = '';
       if (this.scaledService) {
         const scaledValue = Math.round((di - this.offset) * this.scale * 10) / 10;
-        this.currentScaled = clampToRange(scaledValue);
+        // Clamping here means scale/offset push the value past HomeKit's usable range, so the
+        // accessory pegs at a boundary and automations stop tracking the DI.
+        this.currentScaled = this.clampWithWarning(
+          `${sensor.name}${SCALED_NAME_SUFFIX}`,
+          scaledValue,
+          () => this.scaledClampWarned,
+          v => {
+            this.scaledClampWarned = v;
+          },
+          `; check scale=${this.scale}/offset=${this.offset}`,
+        );
         this.scaledService.updateCharacteristic(
           this.platform.Characteristic.CurrentTemperature,
           this.currentScaled,
         );
+        scaledDebug = ` [scaled (DI-${this.offset})×${this.scale} = ${scaledValue}`
+          + (this.currentScaled !== scaledValue ? ` → clamped ${this.currentScaled}]` : ']');
       }
 
       this.ready = true;
 
       this.platform.log.debug(
-        `[${sensor.name}] T=${t}℃ H=${h}% → DI=${rawDI}`
-        + (this.scaledService ? ` [scaled (DI-${this.offset})×${this.scale} = ${this.currentScaled}]` : ''),
+        `[${sensor.name}] T=${t}℃ H=${h}% → DI=${rawDI}${scaledDebug}`,
       );
     } catch (err) {
       if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {

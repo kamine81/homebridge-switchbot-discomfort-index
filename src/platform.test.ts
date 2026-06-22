@@ -200,6 +200,65 @@ describe('SwitchBotDiscomfortIndexPlatform.discoverDevices', () => {
     harness.triggerShutdown();
   });
 
+  it.each([
+    { label: 'both scale and offset', sensor: { scale: 10, offset: 60 } },
+    { label: 'scale only', sensor: { scale: 10 } },
+    { label: 'offset only', sensor: { offset: 60 } },
+  ])('warns when $label is set but enableScale is not enabled', ({ sensor }) => {
+    const harness = createHarness();
+    const config = makeConfig([{ ...VALID_SENSOR_A, ...sensor }]);
+
+    const platform = new SwitchBotDiscomfortIndexPlatform(harness.log, config, harness.api);
+    harness.triggerLaunch();
+
+    // Only the base accessory is registered; the orphaned scale/offset are reported, not silently ignored.
+    expect(platform.accessories).toHaveLength(1);
+    expect(harness.log.warn).toHaveBeenCalledWith(
+      expect.stringContaining('enableScale is not enabled'),
+    );
+
+    harness.triggerShutdown();
+  });
+
+  it('does not warn about ignored scale/offset when neither is set', () => {
+    const harness = createHarness();
+    const config = makeConfig([{ ...VALID_SENSOR_A }]);
+
+    new SwitchBotDiscomfortIndexPlatform(harness.log, config, harness.api);
+    harness.triggerLaunch();
+
+    expect(harness.log.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining('enableScale is not enabled'),
+    );
+
+    harness.triggerShutdown();
+  });
+
+  it('adds the scaled accessory when enableScale is toggled on for an existing sensor', () => {
+    const harness = createHarness();
+    const sensor: SensorConfig = { ...VALID_SENSOR_A };
+    const config = makeConfig([sensor]);
+
+    const platform = new SwitchBotDiscomfortIndexPlatform(harness.log, config, harness.api);
+    harness.triggerLaunch();
+    expect(platform.accessories).toHaveLength(1);
+    expect(harness.registerPlatformAccessories).toHaveBeenCalledTimes(1);
+
+    // Enable scaling and re-run discovery: the base is reconfigured (not re-registered) while the
+    // scaled accessory is registered new in the same pass.
+    sensor.enableScale = true;
+    sensor.scale = 10;
+    harness.triggerLaunch();
+
+    expect(platform.accessories).toHaveLength(2);
+    expect(harness.registerPlatformAccessories).toHaveBeenCalledTimes(2);
+    const secondRegistration = harness.registerPlatformAccessories.mock.calls[1][2] as PlatformAccessory[];
+    expect(secondRegistration).toHaveLength(1);
+    expect(secondRegistration[0].UUID).toBe(`uuid:switchbot-di-scaled-${VALID_SENSOR_A.deviceId}`);
+
+    harness.triggerShutdown();
+  });
+
   it('removes the scaled accessory when enableScale is toggled off', () => {
     const harness = createHarness();
     const sensor: SensorConfig = { ...VALID_SENSOR_A, enableScale: true, scale: 10, offset: 60 };

@@ -106,7 +106,7 @@ This lets you "zoom into" the DI band you care about and trigger on it at much f
 - DI 60 → **0**, DI 75 → **150**, DI 135 → **750** (the cap)
 - one HomeKit 0.5-step ≈ **0.05 DI**
 
-> **Note:** HomeKit's automation trigger threshold can be set up to **750**, and the scaled value is clamped to the `-50…750` range. Choose `offset`/`scale` so the band you care about maps into `0…750` — the largest representable DI is `offset + 750 / scale` (above maps to 750, below the offset maps to its lower bound). The base raw-DI accessory is unaffected by these settings.
+> **Note:** HomeKit's automation trigger threshold can be set up to **750** (confirmed on iOS 26.5; not a documented HAP limit, so it may change), and the scaled value is clamped to the `-50…750` range. Choose `offset`/`scale` so the band you care about maps into `0…750` — the largest representable DI is `offset + 750 / scale`, and any DI below `offset − 50 / scale` is clamped to the `-50` floor. The base raw-DI accessory is unaffected by these settings.
 
 ## Development & Contributing
 
