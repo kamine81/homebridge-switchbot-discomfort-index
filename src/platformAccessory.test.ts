@@ -65,12 +65,12 @@ function createPlatformMock(log: Logger) {
   };
 }
 
-function createAccessoryMock(sensor: SensorConfig) {
+function createAccessoryMock(sensor: SensorConfig, uuidPrefix = 'switchbot-di-') {
   const accessoryInfoService = createFakeService();
   const tempSensorService = createFakeService();
   return {
     displayName: sensor.name,
-    UUID: `uuid:switchbot-di-${sensor.deviceId}`,
+    UUID: `uuid:${uuidPrefix}${sensor.deviceId}`,
     context: { sensor },
     getService: vi.fn((key: unknown) => {
       if (key === 'AccessoryInformation') return accessoryInfoService;
@@ -118,7 +118,7 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
     vi.unstubAllGlobals();
   });
 
-  function buildAccessory(sensor = VALID_SENSOR, scaled = false) {
+  function buildAccessory(sensor = VALID_SENSOR, withScaled = false) {
     const log: Logger = {
       info: vi.fn(),
       warn: vi.fn(),
@@ -130,18 +130,21 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
 
     const platform = createPlatformMock(log) as unknown as Parameters<typeof DiscomfortIndexAccessory>[0];
     const accessory = createAccessoryMock(sensor);
+    const scaledAccessory = withScaled ? createAccessoryMock(sensor, 'switchbot-di-scaled-') : undefined;
 
     const handler = new DiscomfortIndexAccessory(
       platform,
       accessory as unknown as Parameters<typeof DiscomfortIndexAccessory>[1],
       'token',
       'secret',
-      scaled,
+      scaledAccessory as unknown as Parameters<typeof DiscomfortIndexAccessory>[4],
     );
 
+    // getHandler returns the base accessory's value; scaledGet returns the scaled accessory's value.
     const getHandler = accessory._tempSensorService.characteristic._getHandler;
+    const scaledGet = scaledAccessory?._tempSensorService.characteristic._getHandler;
 
-    return { handler, getHandler, log };
+    return { handler, getHandler, scaledGet, log };
   }
 
   it('throws HapStatusError (SERVICE_COMMUNICATION_FAILURE) before first successful refresh', () => {
@@ -174,28 +177,29 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
     handler.stop();
   });
 
-  it('exposes (DI - offset) * scale on the scaled variant', async () => {
+  it('exposes raw DI on the base and (DI - offset) * scale on the scaled accessory from one fetch', async () => {
     vi.unstubAllGlobals();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 25, humidity: 60 } }),
-      }),
-    );
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 25, humidity: 60 } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
-    // 25°C / 60% → DI 72.82; (72.82 - 0) × 2 → 145.6 (rounded to 0.1)
+    // 25°C / 60% → DI 72.82; base = 72.8, scaled (72.82 - 0) × 2 → 145.6 (rounded to 0.1)
     const scaledSensor: SensorConfig = { name: 'Scaled', deviceId: 'AABBCCDDEEFF', scale: 2 };
-    const { handler, getHandler } = buildAccessory(scaledSensor, true);
+    const { handler, getHandler, scaledGet } = buildAccessory(scaledSensor, true);
 
     await handler.start();
 
-    expect(getHandler!() as number).toBeCloseTo(145.6, 1);
+    expect(getHandler!() as number).toBeCloseTo(72.8, 1);
+    expect(scaledGet!() as number).toBeCloseTo(145.6, 1);
+    // A single device poll feeds both accessories.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
 
     handler.stop();
   });
 
-  it('applies the offset before scaling on the scaled variant', async () => {
+  it('applies the offset before scaling on the scaled accessory', async () => {
     vi.unstubAllGlobals();
     vi.stubGlobal(
       'fetch',
@@ -207,11 +211,11 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
 
     // 25°C / 60% → DI 72.82; (72.82 - 70) × 10 → 28.2 (rounded to 0.1)
     const scaledSensor: SensorConfig = { name: 'Scaled', deviceId: 'AABBCCDDEEFF', scale: 10, offset: 70 };
-    const { handler, getHandler } = buildAccessory(scaledSensor, true);
+    const { handler, scaledGet } = buildAccessory(scaledSensor, true);
 
     await handler.start();
 
-    expect(getHandler!() as number).toBeCloseTo(28.2, 1);
+    expect(scaledGet!() as number).toBeCloseTo(28.2, 1);
 
     handler.stop();
   });
@@ -228,11 +232,11 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
 
     // 40°C / 100% → DI ≈ 104; × 10 = 1040, which is clamped down to the 750 cap
     const sensor: SensorConfig = { name: 'Clamped', deviceId: 'AABBCCDDEEFF', scale: 10 };
-    const { handler, getHandler } = buildAccessory(sensor, true);
+    const { handler, scaledGet } = buildAccessory(sensor, true);
 
     await handler.start();
 
-    expect(getHandler!() as number).toBe(750);
+    expect(scaledGet!() as number).toBe(750);
 
     handler.stop();
   });

@@ -99,6 +99,8 @@ The base accessory always shows the **raw DI** — its display is never changed.
 (DI − offset) × scale
 ```
 
+Both accessories are driven by a **single API poll per interval**, so enabling the scaled accessory does not increase SwitchBot API usage.
+
 This lets you "zoom into" the DI band you care about and trigger on it at much finer resolution. For example, with `offset: 60` and `scale: 10`:
 
 - DI 60 → **0**, DI 75 → **150**, DI 135 → **750** (the cap)

@@ -77,16 +77,23 @@ export class SwitchBotDiscomfortIndexPlatform implements DynamicPlatformPlugin {
       // The base accessory always exposes the raw DI.
       const baseUuid = this.api.hap.uuid.generate(`${UUID_PREFIX}${sensor.deviceId}`);
       validUuids.add(baseUuid);
-      this.setupAccessory(baseUuid, sensor.name, sensor, token, secret, false, startIndex * 200);
-      startIndex++;
+      const baseAccessory = this.resolveAccessory(baseUuid, sensor.name, sensor);
 
       // When enabled, an additional accessory exposes the scaled/offset value for finer triggers.
+      let scaledAccessory: PlatformAccessory | undefined;
       if (sensor.enableScale) {
         const scaledUuid = this.api.hap.uuid.generate(`${SCALED_UUID_PREFIX}${sensor.deviceId}`);
         validUuids.add(scaledUuid);
-        this.setupAccessory(scaledUuid, sensor.name + SCALED_NAME_SUFFIX, sensor, token, secret, true, startIndex * 200);
-        startIndex++;
+        scaledAccessory = this.resolveAccessory(scaledUuid, sensor.name + SCALED_NAME_SUFFIX, sensor);
       }
+
+      // One handler per device drives both accessories from a single API poll. It is keyed by the
+      // base UUID; stop any previous handler before replacing it to avoid leaking its timer.
+      this.handlers.get(baseUuid)?.stop();
+      const handler = new DiscomfortIndexAccessory(this, baseAccessory, token, secret, scaledAccessory);
+      this.handlers.set(baseUuid, handler);
+      this.scheduleStart(handler, sensor.name, startIndex * 200);
+      startIndex++;
     }
 
     const stale = this.accessories.filter(a => !validUuids.has(a.UUID));
@@ -102,36 +109,21 @@ export class SwitchBotDiscomfortIndexPlatform implements DynamicPlatformPlugin {
     }
   }
 
-  // Registers a new accessory or reconfigures an existing one (matched by UUID), then schedules its
-  // handler to start after the given delay. `scaled` selects the raw-DI vs scaled handler variant.
-  private setupAccessory(
-    uuid: string,
-    displayName: string,
-    sensor: SensorConfig,
-    token: string,
-    secret: string,
-    scaled: boolean,
-    delay: number,
-  ): void {
+  // Returns the accessory for a UUID, reusing a cached/registered one or registering a new one.
+  private resolveAccessory(uuid: string, displayName: string, sensor: SensorConfig): PlatformAccessory {
     const existing = this.accessories.find(a => a.UUID === uuid);
-
     if (existing) {
       this.log.info('Reconfiguring existing accessory:', existing.displayName);
       existing.context.sensor = sensor;
-      this.handlers.get(uuid)?.stop();
-      const handler = new DiscomfortIndexAccessory(this, existing, token, secret, scaled);
-      this.handlers.set(uuid, handler);
-      this.scheduleStart(handler, displayName, delay);
-    } else {
-      this.log.info('Registering new accessory:', displayName);
-      const accessory = new this.api.platformAccessory(displayName, uuid);
-      accessory.context.sensor = sensor;
-      const handler = new DiscomfortIndexAccessory(this, accessory, token, secret, scaled);
-      this.handlers.set(uuid, handler);
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-      this.accessories.push(accessory);
-      this.scheduleStart(handler, displayName, delay);
+      return existing;
     }
+
+    this.log.info('Registering new accessory:', displayName);
+    const accessory = new this.api.platformAccessory(displayName, uuid);
+    accessory.context.sensor = sensor;
+    this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    this.accessories.push(accessory);
+    return accessory;
   }
 
   private scheduleStart(handler: DiscomfortIndexAccessory, displayName: string, delay: number): void {
