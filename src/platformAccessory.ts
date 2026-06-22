@@ -43,7 +43,7 @@ export class DiscomfortIndexAccessory {
     }
 
     // The DI is scaled before being exposed so that HomeKit automation thresholds (which step in
-    // increments of 5) can target a finer DI granularity. Scaling is opt-in; the default is 1.
+    // increments of 0.5) can target a finer DI granularity. Scaling is opt-in; the default is 1.
     const { value: scale, warning: scaleWarning } = this.sensor.enableScale
       ? resolveScale(this.sensor.scale)
       : { value: 1, warning: undefined };

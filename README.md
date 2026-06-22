@@ -89,12 +89,12 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
 
 ### Finer automation thresholds with `scale`
 
-HomeKit's Home app only lets you set temperature-sensor automation thresholds in **increments of 5**. Because the DI is exposed through `CurrentTemperature`, that means automations can only react in steps of 5 DI by default.
+HomeKit's Home app only lets you set temperature-sensor automation thresholds in **increments of 0.5**. Because the DI is exposed through `CurrentTemperature`, that means automations can only react in steps of 0.5 DI by default.
 
 Enabling `scale` multiplies the DI before it reaches HomeKit, so a 5-unit HomeKit step maps to a finer DI step:
 
-- `scale: 2` → one HomeKit 5-step ≈ **2.5 DI**
-- `scale: 5` → one HomeKit 5-step ≈ **1.0 DI**
+- `scale: 2` → one HomeKit 0.5-step ≈ **0.25 DI**
+- `scale: 5` → one HomeKit 0.5-step ≈ **0.1 DI**
 
 > **Note:** When scaling is enabled, the Home app displays **DI × scale** (e.g. DI 75 shows as 150 with `scale: 2`). This is expected — the number is intentionally inflated to gain finer trigger precision. Leave `enableScale` off (the default) to keep the raw DI value.
 

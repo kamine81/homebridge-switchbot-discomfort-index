@@ -53,7 +53,7 @@
               "title": "Enable scale conversion",
               "type": "boolean",
               "default": false,
-              "description": "Multiply the DI before exposing it to HomeKit so automation thresholds (which step in increments of 5) can target a finer DI granularity. When off, the raw DI is used."
+              "description": "Multiply the DI before exposing it to HomeKit so automation thresholds (which step in increments of 0.5) can target a finer DI granularity. When off, the raw DI is used."
             },
             "scale": {
               "title": "Scale factor",
@@ -61,7 +61,7 @@
               "default": 2,
               "minimum": 1,
               "maximum": 10,
-              "description": "Factor multiplied with the DI (e.g. 2 makes one HomeKit 5-step equal 2.5 DI). The Home app will display DI × scale."
+              "description": "Factor multiplied with the DI (e.g. 2 makes one HomeKit 0.5-step equal 0.25 DI). The Home app will display DI × scale."
             }
           }
         }
