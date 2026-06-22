@@ -101,10 +101,10 @@ The base accessory always shows the **raw DI** — its display is never changed.
 
 This lets you "zoom into" the DI band you care about and trigger on it at much finer resolution. For example, with `offset: 60` and `scale: 10`:
 
-- DI 60 → **0**, DI 75 → **150** (the band 60–75 spans the full HomeKit range)
+- DI 60 → **0**, DI 75 → **150**, DI 135 → **750** (the cap)
 - one HomeKit 0.5-step ≈ **0.05 DI**
 
-> **Note:** HomeKit's automation trigger threshold is capped at **150**, and the scaled value is clamped to the `-50…150` range. Choose `offset`/`scale` so the band you care about maps into `0…150` (above maps to 150, below to its lower bound). The base raw-DI accessory is unaffected by these settings.
+> **Note:** HomeKit's automation trigger threshold can be set up to **750**, and the scaled value is clamped to the `-50…750` range. Choose `offset`/`scale` so the band you care about maps into `0…750` — the largest representable DI is `offset + 750 / scale` (above maps to 750, below the offset maps to its lower bound). The base raw-DI accessory is unaffected by these settings.
 
 ## Development & Contributing
 

@@ -54,8 +54,8 @@ The entry point follows the three-layer structure required by Homebridge's Dynam
   - `configureAccessory()` is called by Homebridge during startup to push cache-restored accessories into `this.accessories`. It does not create handlers (the API is not ready yet).
   - The actual setup happens in `didFinishLaunching` via `discoverDevices()`. It iterates `config.sensors[]`, determines UUIDs with `uuid.generate('switchbot-di-' + deviceId)`, and register / reconfigure / unregister accessories based on the diff against the cache.
   - `handlers: Map<UUID, DiscomfortIndexAccessory>` holds one handler per accessory. `stop()` is always called on shutdown and on reconfiguration to prevent timer leaks.
-- **`src/platformAccessory.ts`** (`DiscomfortIndexAccessory`) — one sensor = one handler.
-  - **Important: HomeKit has no "Discomfort Index" characteristic, so the DI value is stored in `TemperatureSensor.CurrentTemperature`.** `setProps({ minValue: -50, maxValue: 150, minStep: 0.1 })` widens the allowed range. The Home app displays "X°C", but the number itself is the DI.
+- **`src/platformAccessory.ts`** (`DiscomfortIndexAccessory`) — one accessory = one handler. A sensor produces a base accessory (raw DI) and, when `enableScale` is set, an extra scaled accessory exposing `(DI - offset) * scale` (selected by the `scaled` constructor flag).
+  - **Important: HomeKit has no "Discomfort Index" characteristic, so the DI value is stored in `TemperatureSensor.CurrentTemperature`.** `setProps({ minValue: -50, maxValue: 750, minStep: 0.1 })` widens the allowed range (750 is HomeKit's automation-trigger threshold cap). The Home app displays "X°C", but the number itself is the DI.
   - `start()` awaits the first `refresh()` and then sets up `setInterval`. Default `updateInterval` is 60 seconds, minimum 30 seconds (clamped by `Math.max(30, ...)`).
   - `start()` is separated from the constructor. The constructor is side-effect-free init only; I/O and timers live in `start()`. This is an invariant of this repo.
 - **`src/utils.ts`** — pure functions only.

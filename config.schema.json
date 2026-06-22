@@ -69,7 +69,7 @@
               "default": 0,
               "minimum": 0,
               "maximum": 150,
-              "description": "DI value subtracted before scaling, to shift the band of interest toward 0 so the result fits HomeKit's 150 cap (e.g. offset 60, scale 10 maps DI 60→0 and DI 75→150)."
+              "description": "DI value subtracted before scaling, to shift the band of interest toward 0 so the result fits HomeKit's 750 trigger cap (e.g. offset 60, scale 10 maps DI 60→0 and DI 75→150). Largest representable DI is offset + 750 / scale."
             }
           }
         }

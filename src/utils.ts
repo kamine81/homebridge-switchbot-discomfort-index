@@ -95,7 +95,7 @@ const MAX_OFFSET = 150;
 const DEFAULT_OFFSET = 0;
 
 // Resolves the offset subtracted from the Discomfort Index before scaling on the scaled accessory.
-// It lets the DI band of interest be shifted toward 0 so the scaled value fits within HomeKit's 150
+// It lets the DI band of interest be shifted toward 0 so the scaled value fits within HomeKit's 750
 // trigger cap (e.g. offset=60, scale=10 maps DI 60->0 and DI 75->150). May be fractional.
 export function resolveOffset(raw: unknown): { value: number; warning?: string } {
   if (raw === undefined) return { value: DEFAULT_OFFSET };
