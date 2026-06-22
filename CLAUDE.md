@@ -52,10 +52,10 @@ The entry point follows the three-layer structure required by Homebridge's Dynam
 - **`src/index.ts`** — registers the platform with `api.registerPlatform(PLATFORM_NAME, ...)`. Nothing else.
 - **`src/platform.ts`** (`SwitchBotDiscomfortIndexPlatform`) — platform core.
   - `configureAccessory()` is called by Homebridge during startup to push cache-restored accessories into `this.accessories`. It does not create handlers (the API is not ready yet).
-  - The actual setup happens in `didFinishLaunching` via `discoverDevices()`. It iterates `config.sensors[]`, determines UUIDs with `uuid.generate('switchbot-di-' + deviceId)`, and register / reconfigure / unregister accessories based on the diff against the cache.
-  - `handlers: Map<UUID, DiscomfortIndexAccessory>` holds one handler per accessory. `stop()` is always called on shutdown and on reconfiguration to prevent timer leaks.
-- **`src/platformAccessory.ts`** (`DiscomfortIndexAccessory`) — one sensor = one handler.
-  - **Important: HomeKit has no "Discomfort Index" characteristic, so the DI value is stored in `TemperatureSensor.CurrentTemperature`.** `setProps({ minValue: -50, maxValue: 150, minStep: 0.1 })` widens the allowed range. The Home app displays "X°C", but the number itself is the DI.
+  - The actual setup happens in `didFinishLaunching` via `discoverDevices()`. It iterates `config.sensors[]`, determines UUIDs with `uuid.generate('switchbot-di-' + deviceId)` (and `'switchbot-di-scaled-' + deviceId` for the optional scaled accessory via `resolveAccessory()`), and register / reconfigure / unregister accessories based on the diff against the cache.
+  - `handlers: Map<UUID, DiscomfortIndexAccessory>` holds one handler per device, keyed by the base accessory UUID. `stop()` is always called on shutdown and on reconfiguration to prevent timer leaks.
+- **`src/platformAccessory.ts`** (`DiscomfortIndexAccessory`) — one handler per device. The handler owns the base accessory (raw DI) and, when `enableScale` is set, an additional scaled accessory exposing `(DI - offset) * scale` (passed as the optional `scaledAccessory` constructor arg). The device status is fetched once per interval and updates both accessories, so scaling adds no extra API calls.
+  - **Important: HomeKit has no "Discomfort Index" characteristic, so the DI value is stored in `TemperatureSensor.CurrentTemperature`.** `setProps({ minValue: -50, maxValue: 750, minStep: 0.1 })` widens the allowed range (750 is the Home app's automation-trigger threshold cap, confirmed on iOS 26.5 — not a documented HAP limit). The Home app displays "X°C", but the number itself is the DI.
   - `start()` awaits the first `refresh()` and then sets up `setInterval`. Default `updateInterval` is 60 seconds, minimum 30 seconds (clamped by `Math.max(30, ...)`).
   - `start()` is separated from the constructor. The constructor is side-effect-free init only; I/O and timers live in `start()`. This is an invariant of this repo.
 - **`src/utils.ts`** — pure functions only.
@@ -80,6 +80,7 @@ The entry point follows the three-layer structure required by Homebridge's Dynam
 - TypeScript with `strict: true`. Do not relax types to work around errors.
 - Use `this.platform.log` (`info` / `warn` / `error` / `debug`) for logging. No `console.log`.
 - Log messages and code comments must be written in English.
+- GitHub issues and pull requests (titles and bodies) must be written in English.
 - Conventional Commits (`feat:` / `fix:` / `refactor:` / `test:` / `docs:` / `chore:` / `ci:`). PRs merge into main.
 
 ## Config files

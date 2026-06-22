@@ -8,9 +8,9 @@ import {
   Service,
 } from 'homebridge';
 
-import { PLATFORM_NAME, PLUGIN_NAME, UUID_PREFIX } from './settings';
+import { PLATFORM_NAME, PLUGIN_NAME, SCALED_NAME_SUFFIX, SCALED_UUID_PREFIX, UUID_PREFIX } from './settings';
 import { DiscomfortIndexAccessory } from './platformAccessory';
-import { isValidDeviceId, isSensorConfig, isValidToken } from './utils';
+import { isValidDeviceId, isSensorConfig, isValidToken, type SensorConfig } from './utils';
 
 export class SwitchBotDiscomfortIndexPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
@@ -74,40 +74,31 @@ export class SwitchBotDiscomfortIndexPlatform implements DynamicPlatformPlugin {
         continue;
       }
 
-      const uuid = this.api.hap.uuid.generate(`${UUID_PREFIX}${sensor.deviceId}`);
-      validUuids.add(uuid);
+      // The base accessory always exposes the raw DI.
+      const baseUuid = this.api.hap.uuid.generate(`${UUID_PREFIX}${sensor.deviceId}`);
+      validUuids.add(baseUuid);
+      const baseAccessory = this.resolveAccessory(baseUuid, sensor.name, sensor);
 
-      const existing = this.accessories.find(a => a.UUID === uuid);
-      const delay = startIndex * 200;
-      startIndex++;
-
-      if (existing) {
-        this.log.info('Reconfiguring existing accessory:', existing.displayName);
-        existing.context.sensor = sensor;
-        this.handlers.get(uuid)?.stop();
-        const reconHandler = new DiscomfortIndexAccessory(this, existing, token, secret);
-        this.handlers.set(uuid, reconHandler);
-        setTimeout(() => {
-          reconHandler.start().catch(err => {
-            const message = err instanceof Error ? err.message : String(err);
-            this.log.error(`[${sensor.name}] Handler failed to start: ${message}`);
-          });
-        }, delay);
-      } else {
-        this.log.info('Registering new accessory:', sensor.name);
-        const accessory = new this.api.platformAccessory(sensor.name, uuid);
-        accessory.context.sensor = sensor;
-        const newHandler = new DiscomfortIndexAccessory(this, accessory, token, secret);
-        this.handlers.set(uuid, newHandler);
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-        this.accessories.push(accessory);
-        setTimeout(() => {
-          newHandler.start().catch(err => {
-            const message = err instanceof Error ? err.message : String(err);
-            this.log.error(`[${sensor.name}] Handler failed to start: ${message}`);
-          });
-        }, delay);
+      // When enabled, an additional accessory exposes the scaled/offset value for finer triggers.
+      let scaledAccessory: PlatformAccessory | undefined;
+      if (sensor.enableScale) {
+        const scaledUuid = this.api.hap.uuid.generate(`${SCALED_UUID_PREFIX}${sensor.deviceId}`);
+        validUuids.add(scaledUuid);
+        scaledAccessory = this.resolveAccessory(scaledUuid, sensor.name + SCALED_NAME_SUFFIX, sensor);
+      } else if (sensor.scale !== undefined || sensor.offset !== undefined) {
+        // scale/offset only take effect on the scaled accessory; without enableScale they are ignored.
+        this.log.warn(
+          `[${sensor.name}] scale/offset are set but enableScale is not enabled; they will be ignored.`,
+        );
       }
+
+      // One handler per device drives both accessories from a single API poll. It is keyed by the
+      // base UUID; stop any previous handler before replacing it to avoid leaking its timer.
+      this.handlers.get(baseUuid)?.stop();
+      const handler = new DiscomfortIndexAccessory(this, baseAccessory, token, secret, scaledAccessory);
+      this.handlers.set(baseUuid, handler);
+      this.scheduleStart(handler, sensor.name, startIndex * 200);
+      startIndex++;
     }
 
     const stale = this.accessories.filter(a => !validUuids.has(a.UUID));
@@ -121,5 +112,31 @@ export class SwitchBotDiscomfortIndexPlatform implements DynamicPlatformPlugin {
       }
       this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, stale);
     }
+  }
+
+  // Returns the accessory for a UUID, reusing a cached/registered one or registering a new one.
+  private resolveAccessory(uuid: string, displayName: string, sensor: SensorConfig): PlatformAccessory {
+    const existing = this.accessories.find(a => a.UUID === uuid);
+    if (existing) {
+      this.log.info('Reconfiguring existing accessory:', existing.displayName);
+      existing.context.sensor = sensor;
+      return existing;
+    }
+
+    this.log.info('Registering new accessory:', displayName);
+    const accessory = new this.api.platformAccessory(displayName, uuid);
+    accessory.context.sensor = sensor;
+    this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    this.accessories.push(accessory);
+    return accessory;
+  }
+
+  private scheduleStart(handler: DiscomfortIndexAccessory, displayName: string, delay: number): void {
+    setTimeout(() => {
+      handler.start().catch(err => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.log.error(`[${displayName}] Handler failed to start: ${message}`);
+      });
+    }, delay);
   }
 }

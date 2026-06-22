@@ -66,7 +66,10 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
         {
           "name": "Living Room DI",
           "deviceId": "XXXXXXXXXXXX",
-          "updateInterval": 60
+          "updateInterval": 60,
+          "enableScale": true,
+          "scale": 10,
+          "offset": 60
         }
       ]
     }
@@ -82,6 +85,28 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
 | `sensors[].name` | Name shown in HomeKit |
 | `sensors[].deviceId` | 12-digit hex device ID |
 | `sensors[].updateInterval` | Polling interval in seconds (default 60, min 30, max 3600) |
+| `sensors[].enableScale` | Add a separate scaled accessory for finer triggers (default `false`) |
+| `sensors[].scale` | Factor multiplied with `(DI − offset)` on the scaled accessory (default 2, min 1, max 10) |
+| `sensors[].offset` | DI baseline subtracted before scaling (default 0, min 0, max 150) |
+
+### Finer automation thresholds with a scaled accessory
+
+HomeKit's Home app only lets you set temperature-sensor automation thresholds in **increments of 0.5**. Because the DI is exposed through `CurrentTemperature`, automations can only react in steps of 0.5 DI.
+
+The base accessory always shows the **raw DI** — its display is never changed. When `enableScale` is on, an **additional accessory** (named `<name> (scaled)`) is registered that exposes:
+
+```
+(DI − offset) × scale
+```
+
+Both accessories are driven by a **single API poll per interval**, so enabling the scaled accessory does not increase SwitchBot API usage.
+
+This lets you "zoom into" the DI band you care about and trigger on it at much finer resolution. For example, with `offset: 60` and `scale: 10`:
+
+- DI 60 → **0**, DI 75 → **150**, DI 135 → **750** (the cap)
+- one HomeKit 0.5-step ≈ **0.05 DI**
+
+> **Note:** HomeKit's automation trigger threshold can be set up to **750** (confirmed on iOS 26.5; not a documented HAP limit, so it may change), and the scaled value is clamped to the `-50…750` range. Choose `offset`/`scale` so the band you care about maps into `0…750` — the largest representable DI is `offset + 750 / scale`, and any DI below `offset − 50 / scale` is clamped to the `-50` floor. The base raw-DI accessory is unaffected by these settings.
 
 ## Development & Contributing
 
