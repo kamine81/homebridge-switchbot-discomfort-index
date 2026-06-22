@@ -15,6 +15,12 @@ export type { SensorConfig } from './utils';
 const DI_MIN_VALUE = -50;
 const DI_MAX_VALUE = 750;
 
+// A getter answers with the last reading until it goes stale, i.e. older than this many update
+// intervals. Three is a deliberate, conservative default: long enough to ride out a couple of slow or
+// failed polls, short enough that HomeKit surfaces SERVICE_COMMUNICATION_FAILURE before automations act
+// on hours-old data.
+const STALE_INTERVAL_FACTOR = 3;
+
 function clampToRange(value: number): number {
   return Math.min(DI_MAX_VALUE, Math.max(DI_MIN_VALUE, value));
 }
@@ -40,7 +46,12 @@ export class DiscomfortIndexAccessory {
   private readonly offset: number;
   private currentDI = 0;       // raw DI exposed by the base accessory
   private currentScaled = 0;   // (DI - offset) * scale exposed by the scaled accessory
-  private ready = false;
+  // Timestamp (ms) of the last successful refresh, or undefined before the first success. Getters serve
+  // the last reading until it is older than staleThresholdMs, then report a communication failure.
+  private lastSuccessAt?: number;
+  private staleThresholdMs = 0;
+  // Warn once when reads begin failing the freshness check; re-armed on the next successful refresh.
+  private staleWarned = false;
   private timer?: NodeJS.Timeout;
   // Track whether each value is currently being clamped, so the warning is logged once per clamping
   // episode instead of every interval. Reset when the value falls back within range.
@@ -136,6 +147,8 @@ export class DiscomfortIndexAccessory {
     if (warning) {
       this.platform.log.warn(`[${this.sensor.name}] ${warning}`);
     }
+    // Set before the first refresh so a successful refresh is never measured against a 0 threshold.
+    this.staleThresholdMs = intervalSec * 1000 * STALE_INTERVAL_FACTOR;
     await this.refresh();
     this.timer = setInterval(() => this.refresh(), intervalSec * 1000);
   }
@@ -148,21 +161,36 @@ export class DiscomfortIndexAccessory {
   }
 
   private handleGetBase(): CharacteristicValue {
-    this.ensureReady();
+    this.ensureFresh();
     return this.currentDI;
   }
 
   private handleGetScaled(): CharacteristicValue {
-    this.ensureReady();
+    this.ensureFresh();
     return this.currentScaled;
   }
 
-  private ensureReady(): void {
-    if (!this.ready) {
-      throw new this.platform.api.hap.HapStatusError(
-        this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE,
-      );
+  // Throws SERVICE_COMMUNICATION_FAILURE when there has been no successful refresh, or the last one is
+  // older than the staleness threshold. Without the staleness check a sensor that went offline after one
+  // success would keep answering reads with a frozen value, so automations would act on outdated data.
+  private ensureFresh(): void {
+    if (this.lastSuccessAt !== undefined && Date.now() - this.lastSuccessAt <= this.staleThresholdMs) {
+      return;
     }
+
+    // Warn once per stale episode, but only after a prior success; the pre-first-refresh case throws
+    // silently (HomeKit polls during startup and that is expected, not worth logging).
+    if (this.lastSuccessAt !== undefined && !this.staleWarned) {
+      const ageSec = Math.round((Date.now() - this.lastSuccessAt) / 1000);
+      this.platform.log.warn(
+        `[${this.sensor.name}] No successful update for ${ageSec}s; reporting communication failure to HomeKit.`,
+      );
+      this.staleWarned = true;
+    }
+
+    throw new this.platform.api.hap.HapStatusError(
+      this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE,
+    );
   }
 
   // Clamps a value to the HomeKit range and, if it actually clamped, logs a warning once per clamping
@@ -238,7 +266,8 @@ export class DiscomfortIndexAccessory {
           + (this.currentScaled !== scaledValue ? ` → clamped ${this.currentScaled}]` : ']');
       }
 
-      this.ready = true;
+      this.lastSuccessAt = Date.now();
+      this.staleWarned = false;
 
       this.platform.log.debug(
         `[${sensor.name}] T=${t}℃ H=${h}% → DI=${rawDI}${scaledDebug}`,
