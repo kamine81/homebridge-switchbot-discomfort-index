@@ -65,7 +65,7 @@ The entry point follows the three-layer structure required by Homebridge's Dynam
 
 ### SwitchBot API calls
 
-`fetchStatus()` calls `GET /v1.1/devices/{deviceId}/status` and treats `statusCode !== 100` as an error (HTTP 200 can still carry an API-level error). On failure, the error is logged and the current interval tick is skipped; the next tick will retry. Non-finite `temperature` / `humidity` values are treated the same way.
+`fetchStatus()` calls `GET /v1.1/devices/{deviceId}/status` and treats `statusCode !== 100` as an error (HTTP 200 can still carry an API-level error). On failure, the error is logged and the current interval tick is skipped; the next tick will retry. Non-finite `temperature` / `humidity` values are treated the same way. The getters keep serving the last successful reading across skipped ticks, but once it is older than `STALE_INTERVAL_FACTOR` update intervals (3 by default) they throw `SERVICE_COMMUNICATION_FAILURE` so HomeKit stops acting on stale data; a fresh success clears the staleness.
 
 ## Testing
 

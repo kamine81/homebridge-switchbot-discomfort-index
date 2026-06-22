@@ -368,6 +368,73 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
     handler.stop();
   });
 
+  it('serves the last reading until it goes stale, then reports communication failure', async () => {
+    vi.unstubAllGlobals();
+    const ok = {
+      ok: true,
+      json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 25, humidity: 60 } }),
+    };
+    // The first poll succeeds; every later poll rejects (the sensor goes offline).
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(ok)
+      .mockRejectedValue(new Error('offline'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Default 60s interval → 180s (3 missed polls) staleness threshold.
+    const { handler, getHandler, log } = buildAccessory();
+
+    await handler.start();
+    expect(typeof getHandler!()).toBe('number');
+
+    // Two missed polls (120s): still inside the 180s freshness window, so the last value is served.
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(typeof getHandler!()).toBe('number');
+
+    // Past the threshold (240s > 180s): the reading is stale and a communication failure is reported.
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(() => getHandler!()).toThrow(
+      expect.objectContaining({ hapStatus: HAPStatus.SERVICE_COMMUNICATION_FAILURE }),
+    );
+    // A second stale read still throws, but the staleness is logged only once per episode.
+    expect(() => getHandler!()).toThrow(HapStatusError);
+    const staleWarns = (log.warn as unknown as { mock: { calls: unknown[][] } }).mock.calls
+      .filter(c => String(c[0]).includes('No successful update'));
+    expect(staleWarns).toHaveLength(1);
+
+    handler.stop();
+  });
+
+  it('recovers and serves fresh readings again after a successful poll', async () => {
+    vi.unstubAllGlobals();
+    const ok = {
+      ok: true,
+      json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 25, humidity: 60 } }),
+    };
+    // Success, then four failures (goes stale by 240s), then success again from 300s onward.
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(ok)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue(ok);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { handler, getHandler } = buildAccessory();
+
+    await handler.start();
+    await vi.advanceTimersByTimeAsync(240_000);
+    expect(() => getHandler!()).toThrow(
+      expect.objectContaining({ hapStatus: HAPStatus.SERVICE_COMMUNICATION_FAILURE }),
+    );
+
+    // A later successful poll restores freshness, so reads return a value again.
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(typeof getHandler!()).toBe('number');
+
+    handler.stop();
+  });
+
   it('throws HapStatusError when temperature/humidity is non-finite after refresh', async () => {
     vi.unstubAllGlobals();
     vi.stubGlobal(
