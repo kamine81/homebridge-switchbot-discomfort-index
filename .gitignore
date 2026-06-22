@@ -6,4 +6,5 @@ coverage/
 .env
 .vscode/
 .worktrees/
+.serena/
 *.tgz

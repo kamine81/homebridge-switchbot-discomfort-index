@@ -1,5 +1,6 @@
 src/
 .claude/
+.serena/
 .gitignore
 .prettierrc.json
 tsconfig.json
