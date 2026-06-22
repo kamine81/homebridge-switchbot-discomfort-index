@@ -118,7 +118,7 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
     vi.unstubAllGlobals();
   });
 
-  function buildAccessory(sensor = VALID_SENSOR) {
+  function buildAccessory(sensor = VALID_SENSOR, scaled = false) {
     const log: Logger = {
       info: vi.fn(),
       warn: vi.fn(),
@@ -136,6 +136,7 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
       accessory as unknown as Parameters<typeof DiscomfortIndexAccessory>[1],
       'token',
       'secret',
+      scaled,
     );
 
     const getHandler = accessory._tempSensorService.characteristic._getHandler;
@@ -173,7 +174,7 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
     handler.stop();
   });
 
-  it('exposes the DI multiplied by scale when enableScale is true', async () => {
+  it('exposes (DI - offset) * scale on the scaled variant', async () => {
     vi.unstubAllGlobals();
     vi.stubGlobal(
       'fetch',
@@ -183,13 +184,34 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
       }),
     );
 
-    // 25°C / 60% → DI 72.82; scaled ×2 → 145.6 (rounded to 0.1)
-    const scaledSensor: SensorConfig = { name: 'Scaled', deviceId: 'AABBCCDDEEFF', enableScale: true, scale: 2 };
-    const { handler, getHandler } = buildAccessory(scaledSensor);
+    // 25°C / 60% → DI 72.82; (72.82 - 0) × 2 → 145.6 (rounded to 0.1)
+    const scaledSensor: SensorConfig = { name: 'Scaled', deviceId: 'AABBCCDDEEFF', scale: 2 };
+    const { handler, getHandler } = buildAccessory(scaledSensor, true);
 
     await handler.start();
 
     expect(getHandler!() as number).toBeCloseTo(145.6, 1);
+
+    handler.stop();
+  });
+
+  it('applies the offset before scaling on the scaled variant', async () => {
+    vi.unstubAllGlobals();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ statusCode: 100, message: 'success', body: { temperature: 25, humidity: 60 } }),
+      }),
+    );
+
+    // 25°C / 60% → DI 72.82; (72.82 - 70) × 10 → 28.2 (rounded to 0.1)
+    const scaledSensor: SensorConfig = { name: 'Scaled', deviceId: 'AABBCCDDEEFF', scale: 10, offset: 70 };
+    const { handler, getHandler } = buildAccessory(scaledSensor, true);
+
+    await handler.start();
+
+    expect(getHandler!() as number).toBeCloseTo(28.2, 1);
 
     handler.stop();
   });
@@ -204,9 +226,9 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
       }),
     );
 
-    // 25°C / 60% → DI 72.82; ×10 = 728.2, which is clamped down to the 150 cap
-    const sensor: SensorConfig = { name: 'Clamped', deviceId: 'AABBCCDDEEFF', enableScale: true, scale: 10 };
-    const { handler, getHandler } = buildAccessory(sensor);
+    // 25°C / 60% → DI 72.82; × 10 = 728.2, which is clamped down to the 150 cap
+    const sensor: SensorConfig = { name: 'Clamped', deviceId: 'AABBCCDDEEFF', scale: 10 };
+    const { handler, getHandler } = buildAccessory(sensor, true);
 
     await handler.start();
 
@@ -215,7 +237,7 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
     handler.stop();
   });
 
-  it('exposes the raw DI when enableScale is false or omitted (backward compatible)', async () => {
+  it('exposes the raw DI on the base variant regardless of scale/offset (backward compatible)', async () => {
     vi.unstubAllGlobals();
     vi.stubGlobal(
       'fetch',
@@ -225,8 +247,8 @@ describe('DiscomfortIndexAccessory.handleGet', () => {
       }),
     );
 
-    // scale is ignored because enableScale is not enabled
-    const sensor: SensorConfig = { name: 'Unscaled', deviceId: 'AABBCCDDEEFF', scale: 2 };
+    // scale/offset are ignored because this is the base (non-scaled) accessory
+    const sensor: SensorConfig = { name: 'Unscaled', deviceId: 'AABBCCDDEEFF', scale: 2, offset: 70 };
     const { handler, getHandler } = buildAccessory(sensor);
 
     await handler.start();

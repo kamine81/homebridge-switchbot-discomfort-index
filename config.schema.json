@@ -50,10 +50,10 @@
               "description": "How often to poll the SwitchBot API (30–3600 seconds, default 60)"
             },
             "enableScale": {
-              "title": "Enable scale conversion",
+              "title": "Add a scaled trigger accessory",
               "type": "boolean",
               "default": false,
-              "description": "Multiply the DI before exposing it to HomeKit so automation thresholds (which step in increments of 0.5) can target a finer DI granularity. When off, the raw DI is used."
+              "description": "Register an additional accessory that exposes (DI − offset) × scale. The base accessory still shows the raw DI; this extra one lets HomeKit automation thresholds (which step in increments of 0.5) target a finer DI granularity."
             },
             "scale": {
               "title": "Scale factor",
@@ -61,7 +61,15 @@
               "default": 2,
               "minimum": 1,
               "maximum": 10,
-              "description": "Factor multiplied with the DI (e.g. 2 makes one HomeKit 0.5-step equal 0.25 DI). The Home app will display DI × scale."
+              "description": "Factor multiplied with (DI − offset) on the scaled accessory (e.g. scale 10 makes one HomeKit 0.5-step equal 0.05 DI)."
+            },
+            "offset": {
+              "title": "Offset (DI baseline)",
+              "type": "number",
+              "default": 0,
+              "minimum": 0,
+              "maximum": 150,
+              "description": "DI value subtracted before scaling, to shift the band of interest toward 0 so the result fits HomeKit's 150 cap (e.g. offset 60, scale 10 maps DI 60→0 and DI 75→150)."
             }
           }
         }
@@ -84,6 +92,13 @@
         "sensors[].enableScale",
         {
           "key": "sensors[].scale",
+          "type": "number",
+          "condition": {
+            "functionBody": "return model.sensors && model.sensors[arrayIndices] && model.sensors[arrayIndices].enableScale === true;"
+          }
+        },
+        {
+          "key": "sensors[].offset",
           "type": "number",
           "condition": {
             "functionBody": "return model.sensors && model.sensors[arrayIndices] && model.sensors[arrayIndices].enableScale === true;"

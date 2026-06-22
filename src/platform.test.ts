@@ -179,6 +179,48 @@ describe('SwitchBotDiscomfortIndexPlatform.discoverDevices', () => {
     harness.triggerShutdown();
   });
 
+  it('registers a second scaled accessory when enableScale is true', () => {
+    const harness = createHarness();
+    const config = makeConfig([{ ...VALID_SENSOR_A, enableScale: true, scale: 10, offset: 60 }]);
+
+    const platform = new SwitchBotDiscomfortIndexPlatform(harness.log, config, harness.api);
+    harness.triggerLaunch();
+
+    expect(platform.accessories).toHaveLength(2);
+    const uuids = platform.accessories.map(a => a.UUID);
+    expect(uuids).toContain(`uuid:switchbot-di-${VALID_SENSOR_A.deviceId}`);
+    expect(uuids).toContain(`uuid:switchbot-di-scaled-${VALID_SENSOR_A.deviceId}`);
+
+    const scaled = platform.accessories.find(
+      a => a.UUID === `uuid:switchbot-di-scaled-${VALID_SENSOR_A.deviceId}`,
+    );
+    expect(scaled!.displayName).toBe(`${VALID_SENSOR_A.name} (scaled)`);
+    expect(harness.registerPlatformAccessories).toHaveBeenCalledTimes(2);
+
+    harness.triggerShutdown();
+  });
+
+  it('removes the scaled accessory when enableScale is toggled off', () => {
+    const harness = createHarness();
+    const sensor: SensorConfig = { ...VALID_SENSOR_A, enableScale: true, scale: 10, offset: 60 };
+    const config = makeConfig([sensor]);
+
+    const platform = new SwitchBotDiscomfortIndexPlatform(harness.log, config, harness.api);
+    harness.triggerLaunch();
+    expect(platform.accessories).toHaveLength(2);
+
+    // Disable scaling and re-run discovery
+    delete sensor.enableScale;
+    harness.triggerLaunch();
+
+    expect(harness.unregisterPlatformAccessories).toHaveBeenCalledTimes(1);
+    const unregistered = harness.unregisterPlatformAccessories.mock.calls[0][2] as PlatformAccessory[];
+    expect(unregistered).toHaveLength(1);
+    expect(unregistered[0].UUID).toBe(`uuid:switchbot-di-scaled-${VALID_SENSOR_A.deviceId}`);
+
+    harness.triggerShutdown();
+  });
+
   it('marks a removed sensor as stale and unregisters it on the next discoverDevices call', () => {
     const harness = createHarness();
     const sensors: SensorConfig[] = [{ ...VALID_SENSOR_A }, { ...VALID_SENSOR_B }];

@@ -18,6 +18,7 @@ export interface SensorConfig {
   updateInterval?: number;
   enableScale?: boolean;
   scale?: number;
+  offset?: number;
 }
 
 export function isSensorConfig(v: unknown): v is SensorConfig {
@@ -28,7 +29,8 @@ export function isSensorConfig(v: unknown): v is SensorConfig {
     typeof obj.deviceId === 'string' && obj.deviceId.length > 0 &&
     (obj.updateInterval === undefined || typeof obj.updateInterval === 'number') &&
     (obj.enableScale === undefined || typeof obj.enableScale === 'boolean') &&
-    (obj.scale === undefined || typeof obj.scale === 'number')
+    (obj.scale === undefined || typeof obj.scale === 'number') &&
+    (obj.offset === undefined || typeof obj.offset === 'number')
   );
 }
 
@@ -63,10 +65,10 @@ const MIN_SCALE = 1;
 const MAX_SCALE = 10;
 const DEFAULT_SCALE = 1;
 
-// Resolves the scale factor applied to the Discomfort Index before it is exposed to HomeKit.
-// Scaling lets HomeKit automation thresholds (which only step in increments of 0.5) target a finer
-// DI granularity (e.g. scale=2 makes one 0.5-step equal 0.25 DI). The scale may be fractional, so
-// unlike resolveUpdateInterval it is not rounded to an integer.
+// Resolves the scale factor used by the optional scaled accessory, which exposes
+// (DI - offset) * scale. Scaling lets HomeKit automation thresholds (which only step in increments
+// of 0.5) target a finer DI granularity (e.g. scale=10 makes one 0.5-step equal 0.05 DI). The scale
+// may be fractional, so unlike resolveUpdateInterval it is not rounded to an integer.
 export function resolveScale(raw: unknown): { value: number; warning?: string } {
   if (raw === undefined) return { value: DEFAULT_SCALE };
 
@@ -85,6 +87,34 @@ export function resolveScale(raw: unknown): { value: number; warning?: string } 
   return {
     value: clamped,
     warning: `scale clamped to ${clamped === MIN_SCALE ? 'minimum' : 'maximum'} ${clamped} (was ${num}).`,
+  };
+}
+
+const MIN_OFFSET = 0;
+const MAX_OFFSET = 150;
+const DEFAULT_OFFSET = 0;
+
+// Resolves the offset subtracted from the Discomfort Index before scaling on the scaled accessory.
+// It lets the DI band of interest be shifted toward 0 so the scaled value fits within HomeKit's 150
+// trigger cap (e.g. offset=60, scale=10 maps DI 60->0 and DI 75->150). May be fractional.
+export function resolveOffset(raw: unknown): { value: number; warning?: string } {
+  if (raw === undefined) return { value: DEFAULT_OFFSET };
+
+  if (!Number.isFinite(raw)) {
+    return {
+      value: DEFAULT_OFFSET,
+      warning: `Invalid offset value (${String(raw)}). Using default of ${DEFAULT_OFFSET}.`,
+    };
+  }
+
+  const num = raw as number;
+  const clamped = Math.min(MAX_OFFSET, Math.max(MIN_OFFSET, num));
+
+  if (num === clamped) return { value: clamped };
+
+  return {
+    value: clamped,
+    warning: `offset clamped to ${clamped === MIN_OFFSET ? 'minimum' : 'maximum'} ${clamped} (was ${num}).`,
   };
 }
 

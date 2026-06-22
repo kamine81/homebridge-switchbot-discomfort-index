@@ -68,7 +68,8 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
           "deviceId": "XXXXXXXXXXXX",
           "updateInterval": 60,
           "enableScale": true,
-          "scale": 2
+          "scale": 10,
+          "offset": 60
         }
       ]
     }
@@ -84,21 +85,26 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
 | `sensors[].name` | Name shown in HomeKit |
 | `sensors[].deviceId` | 12-digit hex device ID |
 | `sensors[].updateInterval` | Polling interval in seconds (default 60, min 30, max 3600) |
-| `sensors[].enableScale` | Opt-in to scaling the DI before exposing it (default `false`) |
-| `sensors[].scale` | Factor multiplied with the DI when `enableScale` is `true` (default 2, min 1, max 10) |
+| `sensors[].enableScale` | Add a separate scaled accessory for finer triggers (default `false`) |
+| `sensors[].scale` | Factor multiplied with `(DI − offset)` on the scaled accessory (default 2, min 1, max 10) |
+| `sensors[].offset` | DI baseline subtracted before scaling (default 0, min 0, max 150) |
 
-### Finer automation thresholds with `scale`
+### Finer automation thresholds with a scaled accessory
 
-HomeKit's Home app only lets you set temperature-sensor automation thresholds in **increments of 0.5**. Because the DI is exposed through `CurrentTemperature`, that means automations can only react in steps of 0.5 DI by default.
+HomeKit's Home app only lets you set temperature-sensor automation thresholds in **increments of 0.5**. Because the DI is exposed through `CurrentTemperature`, automations can only react in steps of 0.5 DI.
 
-Enabling `scale` multiplies the DI before it reaches HomeKit, so a 0.5-unit HomeKit step maps to a finer DI step:
+The base accessory always shows the **raw DI** — its display is never changed. When `enableScale` is on, an **additional accessory** (named `<name> (scaled)`) is registered that exposes:
 
-- `scale: 2` → one HomeKit 0.5-step ≈ **0.25 DI**
-- `scale: 5` → one HomeKit 0.5-step ≈ **0.1 DI**
+```
+(DI − offset) × scale
+```
 
-> **Note:** When scaling is enabled, the Home app displays **DI × scale** (e.g. DI 75 shows as 150 with `scale: 2`). This is expected — the number is intentionally inflated to gain finer trigger precision. Leave `enableScale` off (the default) to keep the raw DI value.
->
-> HomeKit's automation trigger threshold is capped at **150**, so the scaled value is clamped to 150. Pick a `scale` such that the DI range you care about stays under 150 (e.g. with `scale: 2`, DI up to 75 is representable). DI values above the cap are reported as 150.
+This lets you "zoom into" the DI band you care about and trigger on it at much finer resolution. For example, with `offset: 60` and `scale: 10`:
+
+- DI 60 → **0**, DI 75 → **150** (the band 60–75 spans the full HomeKit range)
+- one HomeKit 0.5-step ≈ **0.05 DI**
+
+> **Note:** HomeKit's automation trigger threshold is capped at **150**, and the scaled value is clamped to the `-50…150` range. Choose `offset`/`scale` so the band you care about maps into `0…150` (above maps to 150, below to its lower bound). The base raw-DI accessory is unaffected by these settings.
 
 ## Development & Contributing
 
