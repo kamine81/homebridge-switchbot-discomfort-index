@@ -93,7 +93,7 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
 
 HomeKit's Home app only lets you set temperature-sensor automation thresholds in **increments of 0.5**. Because the DI is exposed through `CurrentTemperature`, automations can only react in steps of 0.5 DI.
 
-The base accessory always shows the **raw DI** — its display is never changed. When `enableScale` is on, an **additional accessory** (named `<name> (scaled)`) is registered that exposes:
+The base accessory always shows the **raw DI** — its display is never changed. When `enableScale` is on, an **additional accessory** (named `<name> Scaled`) is registered that exposes:
 
 ```
 (DI − offset) × scale
