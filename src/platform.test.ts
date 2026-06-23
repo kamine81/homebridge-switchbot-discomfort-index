@@ -194,7 +194,7 @@ describe('SwitchBotDiscomfortIndexPlatform.discoverDevices', () => {
     const scaled = platform.accessories.find(
       a => a.UUID === `uuid:switchbot-di-scaled-${VALID_SENSOR_A.deviceId}`,
     );
-    expect(scaled!.displayName).toBe(`${VALID_SENSOR_A.name} (scaled)`);
+    expect(scaled!.displayName).toBe(`${VALID_SENSOR_A.name} Scaled`);
     expect(harness.registerPlatformAccessories).toHaveBeenCalledTimes(2);
 
     harness.triggerShutdown();
