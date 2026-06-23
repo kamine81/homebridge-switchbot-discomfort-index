@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-23
+
+### Fixed
+
+- Scaled accessory name no longer ends with `)`; the suffix is now ` Scaled`
+  instead of ` (scaled)`, which HomeKit rejected on rename because a name must
+  begin and end with a letter or number (#13)
+
 ## [0.2.0] - 2026-06-23
 
 ### Added
@@ -58,6 +66,7 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 - Documented policy: never log HMAC auth header values (`sign` / `Authorization`)
 
-[Unreleased]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/releases/tag/v0.1.0
