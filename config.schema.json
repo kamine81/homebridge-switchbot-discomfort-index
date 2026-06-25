@@ -61,7 +61,7 @@
               "default": 2,
               "minimum": 1,
               "maximum": 10,
-              "description": "Factor multiplied with (DI − offset) on the scaled accessory (e.g. scale 10 makes one HomeKit 0.5-step equal 0.05 DI)."
+              "description": "Factor multiplied with (DI − offset) on the scaled accessory (e.g. scale 3 makes one HomeKit 0.5-step equal about 0.17 DI)."
             },
             "offset": {
               "title": "Offset (DI baseline)",
@@ -69,7 +69,7 @@
               "default": 0,
               "minimum": 0,
               "maximum": 150,
-              "description": "DI value subtracted before scaling, to shift the band of interest toward 0 so the result fits HomeKit's 750 trigger cap (confirmed on iOS 26.5; e.g. offset 60, scale 10 maps DI 60→0 and DI 75→150). Largest representable DI is offset + 750 / scale."
+              "description": "DI value subtracted before scaling, to shift the band of interest toward 0 so the result fits HomeKit's 750 trigger cap (confirmed on iOS 26.5; e.g. offset 60, scale 3 maps DI 60→0 and DI 75→45). Largest representable DI is offset + 750 / scale."
             }
           }
         }
