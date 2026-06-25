@@ -68,7 +68,7 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
           "deviceId": "XXXXXXXXXXXX",
           "updateInterval": 60,
           "enableScale": true,
-          "scale": 10,
+          "scale": 3,
           "offset": 60
         }
       ]
@@ -101,10 +101,10 @@ The base accessory always shows the **raw DI** — its display is never changed.
 
 Both accessories are driven by a **single API poll per interval**, so enabling the scaled accessory does not increase SwitchBot API usage.
 
-This lets you "zoom into" the DI band you care about and trigger on it at much finer resolution. For example, with `offset: 60` and `scale: 10`:
+This lets you "zoom into" the DI band you care about and trigger on it at much finer resolution. For example, with `offset: 60` and `scale: 3`:
 
-- DI 60 → **0**, DI 75 → **150**, DI 135 → **750** (the cap)
-- one HomeKit 0.5-step ≈ **0.05 DI**
+- DI 60 → **0**, DI 75 → **45**, DI 90 → **90** — even the hottest realistic readings stay far below the 750 cap (only reached at DI 310)
+- one HomeKit 0.5-step ≈ **0.17 DI**
 
 > **Note:** HomeKit's automation trigger threshold can be set up to **750** (confirmed on iOS 26.5; not a documented HAP limit, so it may change), and the scaled value is clamped to the `-50…750` range. Choose `offset`/`scale` so the band you care about maps into `0…750` — the largest representable DI is `offset + 750 / scale`, and any DI below `offset − 50 / scale` is clamped to the `-50` floor. The base raw-DI accessory is unaffected by these settings.
 

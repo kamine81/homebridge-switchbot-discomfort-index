@@ -83,7 +83,7 @@ const DEFAULT_SCALE = 2;
 
 // Resolves the scale factor used by the optional scaled accessory, which exposes
 // (DI - offset) * scale. Scaling lets HomeKit automation thresholds (which only step in increments
-// of 0.5) target a finer DI granularity (e.g. scale=10 makes one 0.5-step equal 0.05 DI). The scale
+// of 0.5) target a finer DI granularity (e.g. scale=3 makes one 0.5-step equal about 0.17 DI). The scale
 // may be fractional, so unlike resolveUpdateInterval it is not rounded to an integer.
 export function resolveScale(raw: unknown): Readonly<ResolvedValue> {
   if (raw === undefined) return { value: DEFAULT_SCALE };
@@ -114,7 +114,7 @@ const DEFAULT_OFFSET = 0;
 
 // Resolves the offset subtracted from the Discomfort Index before scaling on the scaled accessory.
 // It lets the DI band of interest be shifted toward 0 so the scaled value fits within HomeKit's 750
-// trigger cap (e.g. offset=60, scale=10 maps DI 60->0 and DI 75->150). May be fractional.
+// trigger cap (e.g. offset=60, scale=3 maps DI 60->0 and DI 75->45). May be fractional.
 export function resolveOffset(raw: unknown): Readonly<ResolvedValue> {
   if (raw === undefined) return { value: DEFAULT_OFFSET };
 
