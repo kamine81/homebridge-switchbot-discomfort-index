@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-27
+
+### Changed
+
+- Documentation: scaled-accessory examples now use a scale of 3 instead of 10,
+  a more realistic value for typical DI bands (#16)
+- Internal: updated development dependencies and CI actions (no runtime impact)
+
 ## [0.2.1] - 2026-06-23
 
 ### Fixed
@@ -66,7 +74,8 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 - Documented policy: never log HMAC auth header values (`sign` / `Authorization`)
 
-[Unreleased]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/releases/tag/v0.1.0
