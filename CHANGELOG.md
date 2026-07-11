@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-11
+
+First stable release. No functional changes since 0.2.2 — the plugin has been
+running without issues since 0.1.0, and this release commits to the current
+configuration contract.
+
+### Changed
+
+- Declared the configuration surface (`token`, `secret`, `sensors[]`,
+  `updateInterval`, `enableScale`, `scale`, `offset`) stable. From now on the
+  project follows Semantic Versioning against that contract: a breaking config
+  change (removing or renaming a field, or changing a default in a way that
+  alters behaviour) requires a major version bump, an opt-in field or feature a
+  minor bump, and bugfixes, dependency updates and documentation a patch bump
+- Documentation: trimmed content from `CLAUDE.md` that is derivable from the
+  code itself (no runtime impact)
+
 ## [0.2.2] - 2026-06-27
 
 ### Changed
@@ -74,7 +91,8 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 - Documented policy: never log HMAC auth header values (`sign` / `Authorization`)
 
-[Unreleased]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.2...v1.0.0
 [0.2.2]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/kamine81/homebridge-switchbot-discomfort-index/compare/v0.1.0...v0.2.0

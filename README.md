@@ -108,6 +108,14 @@ This lets you "zoom into" the DI band you care about and trigger on it at much f
 
 > **Note:** HomeKit's automation trigger threshold can be set up to **750** (confirmed on iOS 26.5; not a documented HAP limit, so it may change), and the scaled value is clamped to the `-50…750` range. Choose `offset`/`scale` so the band you care about maps into `0…750` — the largest representable DI is `offset + 750 / scale`, and any DI below `offset − 50 / scale` is clamped to the `-50` floor. The base raw-DI accessory is unaffected by these settings.
 
+## Versioning
+
+This plugin follows [Semantic Versioning](https://semver.org/) against its **configuration contract** — the fields accepted in `config.json` (`token`, `secret`, `sensors[]`, `updateInterval`, `enableScale`, `scale`, `offset`) and the behaviour they produce in HomeKit.
+
+- **Major** — a breaking config change: a field is removed or renamed, or a default changes in a way that alters behaviour. Your `config.json` may need editing.
+- **Minor** — a new opt-in field or feature. Existing configs keep working unchanged.
+- **Patch** — bugfixes, dependency updates, documentation.
+
 ## Development & Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
