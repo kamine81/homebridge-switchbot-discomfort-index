@@ -14,12 +14,12 @@ configuration contract.
 
 ### Changed
 
-- Declared the configuration surface (`token`, `secret`, `sensors[]`,
-  `updateInterval`, `enableScale`, `scale`, `offset`) stable. From now on the
-  project follows Semantic Versioning against that contract: a breaking config
-  change (removing or renaming a field, or changing a default in a way that
-  alters behaviour) requires a major version bump, an opt-in field or feature a
-  minor bump, and bugfixes, dependency updates and documentation a patch bump
+- Declared the configuration surface defined in `config.schema.json` stable.
+  From now on the project follows Semantic Versioning against that contract: a
+  breaking config change (removing or renaming a field, or changing a default in
+  a way that alters behaviour) requires a major version bump, an opt-in field or
+  feature a minor bump, and bugfixes, dependency updates and documentation a
+  patch bump. See the "Versioning" section of the README
 - Documentation: trimmed content from `CLAUDE.md` that is derivable from the
   code itself (no runtime impact)
 
