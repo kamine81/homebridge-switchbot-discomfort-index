@@ -77,17 +77,17 @@ Find the `deviceId` of your temperature/humidity device in the `deviceList` arra
 }
 ```
 
-| Field | Description |
-| --- | --- |
-| `name` | Platform display name |
-| `token` | SwitchBot OpenAPI token |
-| `secret` | SwitchBot OpenAPI secret |
-| `sensors[].name` | Name shown in HomeKit |
-| `sensors[].deviceId` | 12-digit hex device ID |
-| `sensors[].updateInterval` | Polling interval in seconds (default 60, min 30, max 3600) |
-| `sensors[].enableScale` | Add a separate scaled accessory for finer triggers (default `false`) |
-| `sensors[].scale` | Factor multiplied with `(DI − offset)` on the scaled accessory (default 2, min 1, max 10) |
-| `sensors[].offset` | DI baseline subtracted before scaling (default 0, min 0, max 150) |
+| Field                      | Description                                                                               |
+| -------------------------- | ----------------------------------------------------------------------------------------- |
+| `name`                     | Platform display name                                                                     |
+| `token`                    | SwitchBot OpenAPI token                                                                   |
+| `secret`                   | SwitchBot OpenAPI secret                                                                  |
+| `sensors[].name`           | Name shown in HomeKit                                                                     |
+| `sensors[].deviceId`       | 12-digit hex device ID                                                                    |
+| `sensors[].updateInterval` | Polling interval in seconds (default 60, min 30, max 3600)                                |
+| `sensors[].enableScale`    | Add a separate scaled accessory for finer triggers (default `false`)                      |
+| `sensors[].scale`          | Factor multiplied with `(DI − offset)` on the scaled accessory (default 2, min 1, max 10) |
+| `sensors[].offset`         | DI baseline subtracted before scaling (default 0, min 0, max 150)                         |
 
 ### Finer automation thresholds with a scaled accessory
 
@@ -107,6 +107,19 @@ This lets you "zoom into" the DI band you care about and trigger on it at much f
 - one HomeKit 0.5-step ≈ **0.17 DI**
 
 > **Note:** HomeKit's automation trigger threshold can be set up to **750** (confirmed on iOS 26.5; not a documented HAP limit, so it may change), and the scaled value is clamped to the `-50…750` range. Choose `offset`/`scale` so the band you care about maps into `0…750` — the largest representable DI is `offset + 750 / scale`, and any DI below `offset − 50 / scale` is clamped to the `-50` floor. The base raw-DI accessory is unaffected by these settings.
+
+## Versioning
+
+This plugin follows [Semantic Versioning](https://semver.org/) against its **configuration contract** — the fields defined in `config.schema.json` and the behaviour they produce in HomeKit:
+
+- platform level: `name`, `token`, `secret`, `sensors[]`
+- per sensor: `name`, `deviceId`, `updateInterval`, `enableScale`, `scale`, `offset`
+
+Releases are numbered against that contract:
+
+- **Major** — a breaking config change: a field is removed or renamed, or a default changes in a way that alters behaviour. Your `config.json` may need editing.
+- **Minor** — a new opt-in field or feature. Existing configs keep working unchanged.
+- **Patch** — bugfixes, dependency updates, documentation.
 
 ## Development & Contributing
 
