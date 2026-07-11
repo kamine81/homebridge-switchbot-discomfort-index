@@ -6,25 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Homebridge platform plugin that calculates the Discomfort Index (DI) from temperature and humidity readings obtained via the SwitchBot OpenAPI v1.1, then exposes the value to HomeKit as a temperature sensor. The plugin does not depend on `homebridge-switchbot` or any other plugin.
 
-## Development commands
-
-```bash
-npm install           # install dependencies
-npm run build         # rimraf dist && tsc — outputs publish artifacts to dist/
-npm test              # vitest run (same as CI)
-npm run watch         # build → npm link → nodemon — rebuilds while linked to Homebridge
-```
-
-Running a single test file or filter:
-
-```bash
-npx vitest run src/utils.test.ts
-npx vitest run -t 'invalid deviceId'   # filter by test name
-npx vitest                              # watch mode
-```
-
-CI (`.github/workflows/ci.yml`) runs `npm ci && npm run build && npm test` on a Node 20 / 22 / 24 matrix. `prepublishOnly` also enforces build → test.
-
 ## Development workflow
 
 Always create a worktree when starting an issue to prevent file conflicts between parallel sessions.
@@ -49,7 +30,6 @@ git branch -d fix/fetch-timeout-26
 
 The entry point follows the three-layer structure required by Homebridge's Dynamic Platform Plugin convention.
 
-- **`src/index.ts`** — registers the platform with `api.registerPlatform(PLATFORM_NAME, ...)`. Nothing else.
 - **`src/platform.ts`** (`SwitchBotDiscomfortIndexPlatform`) — platform core.
   - `configureAccessory()` is called by Homebridge during startup to push cache-restored accessories into `this.accessories`. It does not create handlers (the API is not ready yet).
   - The actual setup happens in `didFinishLaunching` via `discoverDevices()`. It iterates `config.sensors[]`, determines UUIDs with `uuid.generate('switchbot-di-' + deviceId)` (and `'switchbot-di-scaled-' + deviceId` for the optional scaled accessory via `resolveAccessory()`), and register / reconfigure / unregister accessories based on the diff against the cache.
@@ -58,10 +38,7 @@ The entry point follows the three-layer structure required by Homebridge's Dynam
   - **Important: HomeKit has no "Discomfort Index" characteristic, so the DI value is stored in `TemperatureSensor.CurrentTemperature`.** `setProps({ minValue: -50, maxValue: 750, minStep: 0.1 })` widens the allowed range (750 is the Home app's automation-trigger threshold cap, confirmed on iOS 26.5 — not a documented HAP limit). The Home app displays "X°C", but the number itself is the DI.
   - `start()` awaits the first `refresh()` and then sets up `setInterval`. Default `updateInterval` is 60 seconds, minimum 30 seconds (clamped by `Math.max(30, ...)`).
   - `start()` is separated from the constructor. The constructor is side-effect-free init only; I/O and timers live in `start()`. This is an invariant of this repo.
-- **`src/utils.ts`** — pure functions only.
-  - `calculateDiscomfortIndex(t, h)` — `0.81*T + 0.01*H*(0.99*T - 14.3) + 46.3`.
-  - `buildSwitchBotAuthHeaders(token, secret, t, nonce)` — returns a base64 HMAC-SHA256(token+t+nonce) sign per the SwitchBot OpenAPI v1.1 auth spec.
-  - `isValidDeviceId` — validates 12-digit hex strings (derived from BLE MAC addresses). Checked defensively in both `platform.ts` and `platformAccessory.ts`.
+- **`src/utils.ts`** — pure functions only. `deviceId` validity is checked defensively in both `platform.ts` and `platformAccessory.ts`.
 
 ### SwitchBot API calls
 
