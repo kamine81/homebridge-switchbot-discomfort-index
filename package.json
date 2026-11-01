@@ -14,7 +14,7 @@
   "homepage": "https://github.com/kamine81/homebridge-switchbot-discomfort-index#readme",
   "main": "dist/index.js",
   "engines": {
-    "node": "^20.19.0 || ^22.12.0 || ^24.0.0",
+    "node": "^20.19.0 || ^22.12.0 || ^24.0.0 || ^26.0.0",
     "homebridge": "^1.8.0 || ^2.0.0-beta.0"
   },
   "scripts": {
